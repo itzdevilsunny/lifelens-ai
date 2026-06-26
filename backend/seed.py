@@ -1,22 +1,21 @@
-from database import SessionLocal, User, GovernmentScheme, init_db
+from database import get_supabase
 
 def seed_data():
-    init_db()
-    db = SessionLocal()
-    
+    db = get_supabase()
+
     # 1. Seed default user if none exists
-    if db.query(User).count() == 0:
-        default_user = User(
-            name="Aarav Sharma",
-            age=32,
-            state="Maharashtra",
-            occupation="Small Business Owner",
-            monthly_budget=30000.0
-        )
-        db.add(default_user)
+    user_res = db.table("users").select("id").limit(1).execute()
+    if not user_res.data:
+        db.table("users").insert({
+            "name": "Aarav Sharma",
+            "age": 32,
+            "state": "Maharashtra",
+            "occupation": "Small Business Owner",
+            "monthly_budget": 30000.0,
+        }).execute()
         print("Default user seeded.")
 
-    # 2. Seed real government schemes
+    # 2. Seed real government schemes (idempotent — skip if already present)
     schemes = [
         {
             "title": "Pradhan Mantri Jan Dhan Yojana (PMJDY)",
@@ -83,15 +82,17 @@ def seed_data():
         }
     ]
 
-    for s_dict in schemes:
-        existing = db.query(GovernmentScheme).filter(GovernmentScheme.title == s_dict["title"]).first()
-        if not existing:
-            scheme = GovernmentScheme(**s_dict)
-            db.add(scheme)
-    
-    db.commit()
-    print(f"Seeded {len(schemes)} government schemes.")
-    db.close()
+    # Check which schemes already exist and only insert new ones
+    existing_res = db.table("government_schemes").select("title").execute()
+    existing_titles = {row["title"] for row in (existing_res.data or [])}
+
+    new_schemes = [s for s in schemes if s["title"] not in existing_titles]
+    if new_schemes:
+        db.table("government_schemes").insert(new_schemes).execute()
+        print(f"Seeded {len(new_schemes)} new government scheme(s).")
+    else:
+        print("Government schemes already seeded — skipping.")
+
 
 if __name__ == "__main__":
     seed_data()

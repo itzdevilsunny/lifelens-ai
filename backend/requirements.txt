@@ -1,9 +1,8 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
+supabase
 python-dotenv
 python-multipart
 google-generativeai
 pillow
 pydantic
-
