@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, BellRing, Pill, AlertTriangle, Check, Play, Square } from 'lucide-react';
+import { Plus, Trash2, BellRing, Pill, AlertTriangle, Check, Play } from 'lucide-react';
 
 interface Reminder {
   id: number;

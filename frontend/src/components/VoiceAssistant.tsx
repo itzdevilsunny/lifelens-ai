@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Send, Sparkles, Volume2, VolumeX, Bot, User } from 'lucide-react';
+import { Mic, Send, Volume2, VolumeX, Bot, User } from 'lucide-react';
 import axios from 'axios';
 
 interface Message {

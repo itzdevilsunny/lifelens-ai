@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Receipt, TrendingUp, Sparkles, AlertTriangle, CheckCircle, BarChart3 } from 'lucide-react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { Plus, Trash2, Receipt, Sparkles, AlertTriangle, CheckCircle } from 'lucide-react';
+
 
 interface Expense {
   id: number;

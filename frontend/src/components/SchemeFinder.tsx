@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SearchCode, HelpCircle, ChevronDown, ChevronUp, CheckCircle, Award, Landmark, Globe } from 'lucide-react';
+import { SearchCode, ChevronDown, ChevronUp, CheckCircle, Award, Landmark } from 'lucide-react';
 
 interface Scheme {
   id: number;
