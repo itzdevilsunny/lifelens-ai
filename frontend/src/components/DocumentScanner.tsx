@@ -120,11 +120,11 @@ function parseLocalFallback(filename: string, categoryOverride?: string): any {
     category: "other",
     title: "Document Scan",
     extracted_text: "",
-    summary: "Your document has been saved to the repository. Use the category selector below before scanning to get tailored results for bills, prescriptions, or notices.",
+    summary: "Your document has been saved to the repository.",
     total_amount: 0.0,
     bill_category: "Other",
     items: [] as string[],
-    savings_recommendation: "Tip: Use the 'Force Document Category' selector above to pick Bill, Prescription, or Notice before scanning. This helps LifeLens AI apply the right extraction rules and link results to your Expense Tracker, Reminders, or Daily Planner.",
+    savings_recommendation: "",
     medicines: [] as any[],
     actions_required: [] as string[]
   };
@@ -731,6 +731,16 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
                     <p className="text-xs font-bold text-orange-800">LifeLens Optimization Recommendation</p>
                     <p className="text-xs text-orange-700 mt-1 leading-relaxed">{result.savings_recommendation}</p>
                   </div>
+                </div>
+              )}
+
+              {/* Hint for 'other' category - no duplicate tip, just a clean nudge */}
+              {result.document.category === 'other' && (
+                <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl flex items-start gap-2.5">
+                  <span className="text-base shrink-0">💡</span>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    <span className="font-bold">Next scan tip:</span> Select a category pill (<span className="font-semibold">Bill, Prescription, or Notice</span>) before clicking Scan with AI to automatically log expenses, schedule medicine reminders, or create tasks from your document.
+                  </p>
                 </div>
               )}
 
