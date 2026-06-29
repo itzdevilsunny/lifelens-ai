@@ -114,7 +114,7 @@ Schema:
   return JSON.parse(rawText);
 }
 
-function parseLocalFallback(filename: string): any {
+function parseLocalFallback(filename: string, categoryOverride?: string): any {
   const nameLower = filename.toLowerCase();
   const fallback = {
     category: "other",
@@ -129,7 +129,20 @@ function parseLocalFallback(filename: string): any {
     actions_required: [] as string[]
   };
   
-  if (nameLower.includes("electric") || nameLower.includes("power") || nameLower.includes("mseb") || nameLower.includes("water") || nameLower.includes("bill") || nameLower.includes("invoice") || nameLower.includes("receipt") || nameLower.includes("d-mart") || nameLower.includes("dmart") || nameLower.includes("grocery")) {
+  let targetCategory = categoryOverride || "";
+  if (!targetCategory || targetCategory === 'auto') {
+    if (nameLower.includes("electric") || nameLower.includes("power") || nameLower.includes("mseb") || nameLower.includes("water") || nameLower.includes("bill") || nameLower.includes("invoice") || nameLower.includes("receipt") || nameLower.includes("d-mart") || nameLower.includes("dmart") || nameLower.includes("grocery")) {
+      targetCategory = "bill";
+    } else if (nameLower.includes("prescription") || nameLower.includes("doctor") || nameLower.includes("med") || nameLower.includes("medicine") || nameLower.includes("pill") || nameLower.includes("tablet")) {
+      targetCategory = "prescription";
+    } else if (nameLower.includes("notice") || nameLower.includes("tax") || nameLower.includes("court") || nameLower.includes("legal")) {
+      targetCategory = "notice";
+    } else {
+      targetCategory = "other";
+    }
+  }
+
+  if (targetCategory === "bill") {
     fallback.category = "bill";
     if (nameLower.includes("electric") || nameLower.includes("mseb")) {
       fallback.title = "MSEB Electricity Bill";
@@ -153,7 +166,7 @@ function parseLocalFallback(filename: string): any {
       fallback.summary = "Monthly utility broadband bill.";
       fallback.savings_recommendation = "Check if your provider offers an annual pre-paid discount which typically gives 1 month free.";
     }
-  } else if (nameLower.includes("prescription") || nameLower.includes("doctor") || nameLower.includes("med") || nameLower.includes("medicine") || nameLower.includes("pill") || nameLower.includes("tablet")) {
+  } else if (targetCategory === "prescription") {
     fallback.category = "prescription";
     fallback.title = "Dr. Mehta Clinic Prescription";
     fallback.summary = "Doctor prescription recommending medications for blood pressure and general health.";
@@ -163,7 +176,7 @@ function parseLocalFallback(filename: string): any {
       { name: "Multivitamin", dosage: "1 capsule", time: "14:00", details: "Take once daily after lunch" }
     ];
     fallback.savings_recommendation = "Branded Telma 40mg (Rs. 110/strip) -> PMBJP Generic Telmisartan (Rs. 18/strip). Save Rs. 92 (83%) per strip.";
-  } else if (nameLower.includes("notice") || nameLower.includes("tax") || nameLower.includes("court") || nameLower.includes("legal")) {
+  } else if (targetCategory === "notice") {
     fallback.category = "notice";
     fallback.title = "Property Tax Notice";
     fallback.summary = "Official notice for municipal property tax assessment and payment deadline.";
@@ -179,6 +192,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
   // Scanner States
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'auto' | 'bill' | 'prescription' | 'notice' | 'other'>('auto');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -347,6 +361,9 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
 
     const formData = new FormData();
     formData.append("file", file);
+    if (selectedCategory !== 'auto') {
+      formData.append("category", selectedCategory);
+    }
 
     try {
       const res = await axios.post(`${API_BASE}/api/documents/upload`, formData, {
@@ -369,7 +386,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
 
       if (!GEMINI_API_KEY) {
         console.warn("No VITE_GEMINI_API_KEY set. Triggering local fallback OCR scanner engine.");
-        analysis = parseLocalFallback(file.name);
+        analysis = parseLocalFallback(file.name, selectedCategory);
         usedLocalFallback = true;
       } else {
         try {
@@ -377,7 +394,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
           analysis = await callGeminiVisionOCR(file);
         } catch (clientErr: any) {
           console.warn("Client-side Gemini Vision OCR failed. Triggering local fallback OCR scanner engine:", clientErr);
-          analysis = parseLocalFallback(file.name);
+          analysis = parseLocalFallback(file.name, selectedCategory);
           usedLocalFallback = true;
         }
       }
@@ -501,6 +518,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
     setFile(null);
     setResult(null);
     setError(null);
+    setSelectedCategory('auto');
   };
 
   const filteredDocs = documents.filter(doc => 
@@ -577,22 +595,53 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
                 <p className="text-xs text-gray-400 mt-1">Supports PNG, JPG, JPEG, and PDF (bills, prescriptions, notices)</p>
               </div>
 
-              {/* Selected File Details */}
+              {/* Selected File Details & Category Selector */}
               {file && (
-                <div className="flex items-center justify-between p-3.5 bg-orange-50/20 rounded-xl border border-orange-100/50">
-                  <div className="flex items-center gap-3">
-                    <FileText size={20} className="text-orange-500" />
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-gray-700 truncate max-w-xs">{file.name}</p>
-                      <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3.5 bg-orange-50/20 rounded-xl border border-orange-100/50">
+                    <div className="flex items-center gap-3">
+                      <FileText size={20} className="text-orange-500" />
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-gray-700 truncate max-w-xs">{file.name}</p>
+                        <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleUpload}
+                      className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all duration-300 shadow-sm shadow-orange-500/10 cursor-pointer"
+                    >
+                      Scan with AI
+                    </button>
+                  </div>
+
+                  {/* Manual Category Override Pills */}
+                  <div className="p-4 border border-orange-100 bg-orange-50/5 rounded-2xl text-left space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-700">Force Document Category</span>
+                      <span className="text-[10px] text-gray-400">Helps offline OCR apply correct extraction rules</span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2 pt-1">
+                      {[
+                        { id: 'auto', label: 'Auto' },
+                        { id: 'bill', label: 'Bill' },
+                        { id: 'prescription', label: 'Prescription' },
+                        { id: 'notice', label: 'Notice' },
+                        { id: 'other', label: 'Other' }
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setSelectedCategory(item.id as any)}
+                          className={`py-1.5 px-2 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                            selectedCategory === item.id
+                              ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <button 
-                    onClick={handleUpload}
-                    className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all duration-300 shadow-sm shadow-orange-500/10 cursor-pointer"
-                  >
-                    Scan with AI
-                  </button>
                 </div>
               )}
             </div>

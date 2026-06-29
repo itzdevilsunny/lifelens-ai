@@ -40,25 +40,30 @@ def extract_json(text):
         print(f"Failed to parse JSON from AI response: {e}. Raw text: {text}")
         return None
 
-def analyze_document_with_vision(file_path: str, filename: str) -> dict:
+def analyze_document_with_vision(file_path: str, filename: str, category: str = None) -> dict:
     """
     Scans a document (image/PDF) using Gemini Vision API,
     or falls back to rule-based parser if API is not set.
     """
+    category_lower = category.lower().strip() if category else None
+    if category_lower == 'auto':
+        category_lower = None
+
     if HAS_GEMINI:
         try:
             image = Image.open(file_path)
-            prompt = """
+            prompt = f"""
             You are a helpful personal assistant OCR and vision analysis agent.
             Analyze this uploaded document/image (which could be a grocery bill, utility invoice, medical prescription, or government notice).
             
             Extract the content and classify it into one of these categories: "bill", "prescription", "notice", "other".
+            {f"(Note: The user classified this document as a '{category_lower}'. Force the classification category accordingly.)" if category_lower else ""}
             
             Based on the category, extract the following structured details in JSON format.
             Do not write any preamble or code wrapper outside of the JSON block. Return ONLY a single JSON object.
             
             Schema:
-            {
+            {{
               "category": "bill" | "prescription" | "notice" | "other",
               "title": "A short, descriptive title (e.g. 'D-Mart Grocery Bill', 'Dr. Patel Prescription', 'Tax Notice')",
               "extracted_text": "All raw OCR text extracted from the document",
@@ -72,15 +77,15 @@ def analyze_document_with_vision(file_path: str, filename: str) -> dict:
               
               // If category is "prescription":
               "medicines": [
-                {
+                {{
                   "name": "Medicine name (e.g. Paracetamol 650mg)",
                   "dosage": "e.g. 1 tablet",
                   "time": "e.g. 08:00, 20:00",
                   "details": "e.g. Take twice daily after food for 3 days"
-                }
+                }}
               ],
               "savings_recommendation": "Identify if any prescribed medicines are expensive branded drugs. Suggest generic alternatives (chemical/salt name) and calculate estimate monthly savings at Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP) generic stores. (e.g. 'Branded Telma 40mg (Rs. 110/strip) -> PMBJP Generic Telmisartan (Rs. 18/strip). Save Rs. 92 (83%) per strip.')"
-            }
+            }}
             """
             response = client.models.generate_content(
                 model=GEMINI_MODEL,
@@ -107,7 +112,18 @@ def analyze_document_with_vision(file_path: str, filename: str) -> dict:
         "actions_required": []
     }
     
-    if any(k in name_lower for k in ["bill", "invoice", "receipt", "d-mart", "grocery", "electric", "rent", "water"]):
+    target_category = category_lower if category_lower else None
+    if not target_category:
+        if any(k in name_lower for k in ["bill", "invoice", "receipt", "d-mart", "grocery", "electric", "rent", "water"]):
+            target_category = "bill"
+        elif any(k in name_lower for k in ["prescription", "doctor", "med", "medicine", "pill", "tablet"]):
+            target_category = "prescription"
+        elif any(k in name_lower for k in ["notice", "letter", "tax", "court", "govt", "municipal"]):
+            target_category = "notice"
+        else:
+            target_category = "other"
+
+    if target_category == "bill":
         fallback_res["category"] = "bill"
         if "electric" in name_lower:
             fallback_res["title"] = "MSEB Electricity Bill"

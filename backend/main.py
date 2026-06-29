@@ -1,7 +1,7 @@
 import os
 import shutil
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from supabase import Client
@@ -285,7 +285,11 @@ def get_eligible_schemes(db: Client = Depends(get_db)):
 # ─── OCR DOCUMENT SCANNER ROUTE ──────────────────────────────────────────────
 
 @app.post("/api/documents/upload")
-def upload_document(file: UploadFile = File(...), db: Client = Depends(get_db)):
+def upload_document(
+    file: UploadFile = File(...), 
+    category: Optional[str] = Form(None),
+    db: Client = Depends(get_db)
+):
     # Save file locally
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     safe_filename = f"{timestamp}_{file.filename}"
@@ -295,7 +299,7 @@ def upload_document(file: UploadFile = File(...), db: Client = Depends(get_db)):
         shutil.copyfileobj(file.file, buffer)
 
     # Analyze document using AI
-    analysis = ai_service.analyze_document_with_vision(file_path, file.filename)
+    analysis = ai_service.analyze_document_with_vision(file_path, file.filename, category=category)
 
     # Combine summary and savings recommendation to make it persist in the DB
     full_summary = db_summary = analysis.get("summary", "")
