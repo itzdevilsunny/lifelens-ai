@@ -343,8 +343,33 @@ function App() {
 
   // User Profile Update
   const handleSaveProfile = async (updatedUser: { name: string; age: number; state: string; occupation: string; monthly_budget: number }) => {
-    await axios.put(`${API_BASE}/api/user`, updatedUser);
-    await fetchAllData();
+    try {
+      if (isSynced) {
+        await axios.put(`${API_BASE}/api/user`, updatedUser);
+        await fetchAllData();
+      } else {
+        setUser(updatedUser);
+        if (analytics) {
+          setAnalytics({
+            ...analytics,
+            monthly_budget: updatedUser.monthly_budget,
+            overage_warning: analytics.total_spent * 1.15 > updatedUser.monthly_budget,
+            overage_amount: Math.max(0, (analytics.total_spent * 1.15) - updatedUser.monthly_budget)
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Could not save profile to backend. Saving locally instead.", err);
+      setUser(updatedUser);
+      if (analytics) {
+        setAnalytics({
+          ...analytics,
+          monthly_budget: updatedUser.monthly_budget,
+          overage_warning: analytics.total_spent * 1.15 > updatedUser.monthly_budget,
+          overage_amount: Math.max(0, (analytics.total_spent * 1.15) - updatedUser.monthly_budget)
+        });
+      }
+    }
   };
 
   const handleDeleteExpense = async (id: number) => {
