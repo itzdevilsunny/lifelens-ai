@@ -595,19 +595,6 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
                 <p className="text-xs text-gray-400 mt-1">Supports PNG, JPG, JPEG, and PDF (bills, prescriptions, notices)</p>
               </div>
 
-              {/* Developer testing mock upload button */}
-              <div className="text-center mt-1">
-                <button 
-                  id="mock-upload-btn" 
-                  className="text-[10px] font-bold text-orange-500 hover:underline cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFile(new window.File(["mock prescription details content"], "test_prescription.png", { type: "image/png" }));
-                  }}
-                >
-                  [Developer Test: Click to Mock File Drop]
-                </button>
-              </div>
 
               {/* Selected File Details & Category Selector */}
               {file && (
