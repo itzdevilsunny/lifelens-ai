@@ -77,6 +77,9 @@ function App() {
   const [isSynced, setIsSynced] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
+  // Global Language state (accessible by all modules)
+  const [globalLanguage, setGlobalLanguage] = useState<string>('English');
+
   // App States
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -390,7 +393,7 @@ function App() {
           />
         );
       case 'scanner':
-        return <DocumentScanner onScanComplete={fetchAllData} />;
+        return <DocumentScanner onScanComplete={fetchAllData} globalLanguage={globalLanguage} />;
       case 'expenses':
         return (
           <ExpenseTracker
@@ -402,9 +405,9 @@ function App() {
           />
         );
       case 'schemes':
-        return <SchemeFinder schemes={schemes} />;
+        return <SchemeFinder schemes={schemes} globalLanguage={globalLanguage} />;
       case 'assistant':
-        return <VoiceAssistant onDataUpdate={fetchAllData} />;
+        return <VoiceAssistant onDataUpdate={fetchAllData} globalLanguage={globalLanguage} />;
       default:
         return renderDashboardTab();
     }
@@ -508,7 +511,7 @@ function App() {
                 <FileText className="text-orange-500" size={18} />
                 <h4 className="font-bold text-gray-800 text-base">Quick OCR Scanner</h4>
               </div>
-              <DocumentScanner onScanComplete={fetchAllData} />
+              <DocumentScanner onScanComplete={fetchAllData} globalLanguage={globalLanguage} />
             </div>
 
             {/* Latest Expenses Mini log */}
@@ -592,6 +595,8 @@ function App() {
           isSynced={isSynced}
           user={user}
           onEditProfile={() => setIsProfileModalOpen(true)}
+          globalLanguage={globalLanguage}
+          onLanguageChange={setGlobalLanguage}
         />
         
         <main className="flex-1 p-8 overflow-y-auto">

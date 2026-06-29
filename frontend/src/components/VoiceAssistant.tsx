@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Send, Volume2, VolumeX, Bot, User, Languages, Zap, Square } from 'lucide-react';
+import { Mic, MicOff, Send, Volume2, VolumeX, Bot, User, Zap, Square } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -14,7 +14,22 @@ interface Message {
 
 interface VoiceAssistantProps {
   onDataUpdate: () => void;
+  globalLanguage: string;
 }
+
+const LANGUAGE_CODES: Record<string, string> = {
+  English: 'en-IN',
+  Hindi: 'hi-IN',
+  Marathi: 'mr-IN',
+  Tamil: 'ta-IN',
+  Telugu: 'te-IN',
+  Bengali: 'bn-IN',
+  Gujarati: 'gu-IN',
+  Kannada: 'kn-IN',
+  Malayalam: 'ml-IN',
+  Punjabi: 'pa-IN',
+  Odia: 'or-IN'
+};
 
 // ─── Gemini text call ─────────────────────────────────────────────────────────
 async function callGeminiText(prompt: string): Promise<string> {
@@ -37,7 +52,8 @@ async function callGeminiText(prompt: string): Promise<string> {
 // Gemini 2.5 Flash natively understands speech in English, Hindi, Hinglish etc.
 async function callGeminiAudio(
   audioBlob: Blob,
-  languageHint: string
+  languageHint: string,
+  targetLanguage: string
 ): Promise<{ transcript: string; reply: string }> {
   if (!GEMINI_API_KEY) throw new Error("No GEMINI_API_KEY set");
 
@@ -54,13 +70,13 @@ async function callGeminiAudio(
 
 The user just spoke in ${languageHint}. The audio recording is attached.
 
-Step 1: Transcribe exactly what the user said (in their original language).
-Step 2: Respond helpfully as LifePilot AI with practical, India-specific advice.
+Step 1: Transcribe exactly what the user said (in their original language/script).
+Step 2: Respond helpfully as LifePilot AI. The "reply" field MUST be written entirely in the selected language: ${targetLanguage} (using its native script/font, e.g. Devanagari for Hindi/Marathi, Tamil script for Tamil, Kannada script for Kannada, etc.).
 
 Your response MUST be in this exact JSON format:
 {
   "transcript": "what the user said verbatim",
-  "reply": "your helpful response to them"
+  "reply": "your helpful response to them in ${targetLanguage}"
 }
 
 Focus on: budget tracking, expense management, government schemes (PMJDY, Mudra, PM-JAY, APY, PM-KISAN), medicine reminders, daily tasks, savings tips for Indian households. Use ₹ for currency.`;
@@ -106,10 +122,7 @@ Focus on: budget tracking, expense management, government schemes (PMJDY, Mudra,
 }
 
 // ─── Helper: build text-only prompt ──────────────────────────────────────────
-function buildPrompt(query: string, lang: string): string {
-  const langNote = lang === 'hi-IN'
-    ? 'The user prefers Hindi/Hinglish. Reply in a natural mix of Hindi and English.'
-    : 'Reply in clear Indian English.';
+function buildPrompt(query: string, targetLanguage: string): string {
   return `You are LifePilot AI, a personal assistant for everyday Indians. Help with:
 - Daily task planning and productivity
 - Medicine reminders and health schedules  
@@ -117,25 +130,53 @@ function buildPrompt(query: string, lang: string): string {
 - Indian government schemes (PMJDY, PM-JAY, Mudra, APY, PM-KISAN, etc.)
 - Smart savings for Indian households
 
-${langNote}
+CRITICAL requirement: You MUST respond entirely in the selected language: ${targetLanguage} (using its native script/alphabet, e.g. Devanagari for Hindi/Marathi, Tamil script for Tamil, Telugu script for Telugu, etc.).
 
-User: "${query}"
+User query: "${query}"
 
-Give a concise, helpful, India-specific response:`;
+Give a concise, helpful, India-specific response in ${targetLanguage}:`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) => {
-  const [messages, setMessages] = useState<Message[]>([{
-    sender: 'assistant',
-    text: "Hello! I am LifePilot AI ⚡ powered by Gemini 2.5 Flash.\n\n🎙️ Tap the mic button, speak your question, then tap again to send.\n💬 Or just type below.\n\nAsk me about your budget, govt schemes (PMJDY, Mudra, Ayushman), medicines, or tasks!",
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }]);
+export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate, globalLanguage }) => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [speechEnabled, setSpeechEnabled] = useState(true);
-  const [selectedLang, setSelectedLang] = useState<'en-IN' | 'hi-IN'>('en-IN');
   const [aiMode, setAiMode] = useState<'direct' | 'backend'>('direct');
+
+  // Welcome message helper based on selected language
+  useEffect(() => {
+    const fetchWelcome = async () => {
+      if (!GEMINI_API_KEY) {
+        setMessages([{
+          sender: 'assistant',
+          text: `Hello! I am LifePilot AI. Please configure VITE_GEMINI_API_KEY for conversational AI responses in ${globalLanguage}.`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const welcomePrompt = `Generate a warm, friendly 2-sentence welcome greeting as LifePilot AI (everyday helper) introducing yourself. State that the user can speak or type in any Indian language. The greeting MUST be entirely in the selected language: ${globalLanguage} (using its native script/alphabet).`;
+        const welcomeText = await callGeminiText(welcomePrompt);
+        setMessages([{
+          sender: 'assistant',
+          text: welcomeText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } catch {
+        setMessages([{
+          sender: 'assistant',
+          text: `Namaste! I am LifePilot AI, your everyday companion. Currently conversing in ${globalLanguage}. Ask me anything!`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWelcome();
+  }, [globalLanguage]);
 
   // ── Recording state ──
   const [recState, setRecState] = useState<'idle' | 'requesting' | 'recording' | 'processing' | 'error'>('idle');
@@ -162,9 +203,13 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) 
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(clean);
     utt.rate = 1.05;
+    
+    const langCode = LANGUAGE_CODES[globalLanguage] || 'en-IN';
+    utt.lang = langCode;
+
     const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.lang.includes(selectedLang === 'hi-IN' ? 'hi' : 'en-IN'))
-      || voices.find(v => v.lang.includes('en-US'))
+    const voice = voices.find(v => v.lang.includes(langCode))
+      || voices.find(v => v.lang.includes('en-IN'))
       || voices.find(v => v.lang.includes('en'));
     if (voice) utt.voice = voice;
     window.speechSynthesis.speak(utt);
@@ -185,7 +230,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) 
     let replyText = '';
     try {
       if (aiMode === 'direct' && GEMINI_API_KEY) {
-        replyText = await callGeminiText(buildPrompt(query, selectedLang));
+        replyText = await callGeminiText(buildPrompt(query, globalLanguage));
       } else {
         const res = await axios.post(`${API_BASE}/api/chat`, { message: query });
         replyText = res.data.reply;
@@ -273,10 +318,10 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) 
       }
 
       setRecState('processing');
-      const langLabel = selectedLang === 'hi-IN' ? 'Hindi/Hinglish' : 'English (Indian)';
+      const langLabel = `${globalLanguage} (Indian)`;
 
       try {
-        const { transcript, reply } = await callGeminiAudio(blob, langLabel);
+        const { transcript, reply } = await callGeminiAudio(blob, langLabel, globalLanguage);
 
         // Show what user said
         const displayText = transcript || '(voice message)';
@@ -333,10 +378,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) 
     }
   };
 
-  const handleLangChange = (lang: 'en-IN' | 'hi-IN') => {
-    setSelectedLang(lang);
-    if (recState === 'recording') stopRecording();
-  };
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) handleSend();
@@ -394,19 +436,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) 
             </button>
           )}
 
-          {/* Language */}
-          <div className="flex items-center bg-orange-50 border border-orange-100/40 rounded-xl p-0.5">
-            <div className="px-1.5 text-orange-400"><Languages size={13} /></div>
-            {(['en-IN', 'hi-IN'] as const).map(lang => (
-              <button key={lang} onClick={() => handleLangChange(lang)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedLang === lang ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-orange-600'
-                }`}
-              >
-                {lang === 'en-IN' ? 'EN' : 'हिं'}
-              </button>
-            ))}
-          </div>
+
 
           {/* TTS */}
           <button

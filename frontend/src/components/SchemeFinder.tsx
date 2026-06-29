@@ -27,6 +27,7 @@ interface Scheme {
 
 interface SchemeFinderProps {
   schemes: Scheme[];
+  globalLanguage: string;
 }
 
 interface ChatMessage {
@@ -62,22 +63,49 @@ async function callGeminiForSchemes(prompt: string, history: { role: string; par
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "I apologize, I could not generate a response. Please try again.";
 }
 
-export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes }) => {
+export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLanguage }) => {
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'chat'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // Chatbot states
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      sender: 'assistant',
-      text: "Namaste! 🙏 I am your Government Scheme Helper. \n\nTell me about yourself (e.g. your age, state, occupation, income) or ask a question like 'I want to start a business' or 'Are there zero-balance accounts?' and I will match you with eligible schemes!",
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-translate welcome message
+  useEffect(() => {
+    const fetchWelcome = async () => {
+      if (!GEMINI_API_KEY) {
+        setChatMessages([{
+          sender: 'assistant',
+          text: `Hello! I am your Government Scheme Helper. Please configure VITE_GEMINI_API_KEY for queries in ${globalLanguage}.`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+        return;
+      }
+      setChatLoading(true);
+      try {
+        const welcomePrompt = `Generate a warm, friendly welcome greeting in 2 sentences as "LifePilot Scheme Finder Helper". Introduce yourself, say you can match them with schemes from the database, and ask them to share their age, state, or occupation. The greeting MUST be entirely in the selected language: ${globalLanguage} (using its native script/alphabet).`;
+        const welcomeText = await callGeminiForSchemes(welcomePrompt, []);
+        setChatMessages([{
+          sender: 'assistant',
+          text: welcomeText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } catch {
+        setChatMessages([{
+          sender: 'assistant',
+          text: `Namaste! I am your Government Scheme Helper. Ask me anything in ${globalLanguage}.`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } finally {
+        setChatLoading(false);
+      }
+    };
+    fetchWelcome();
+  }, [globalLanguage]);
 
   const toggleExpand = (id: number) => {
     setExpandedId(expandedId === id ? null : id);
@@ -121,7 +149,7 @@ Instructions:
 2. Recommend the best matching scheme(s) from the list above.
 3. State clearly WHY they match and what the BENEFIT is (using Rs / ₹).
 4. If details are missing (like state or occupation), politely ask for them to narrow down the search.
-5. Keep your response friendly, clear, and write in a natural mix of English and Hindi (Hinglish). Use bullet points for readability.`;
+5. You MUST respond entirely in the selected language: ${globalLanguage} (using its native script/alphabet, e.g. Devanagari for Hindi/Marathi, Tamil script for Tamil, Bengali script for Bengali, etc.). Use bullet points for readability.`;
 
       // Build message history
       const history = chatMessages.map(msg => ({

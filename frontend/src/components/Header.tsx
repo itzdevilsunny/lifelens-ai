@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cloud, CloudOff, Calendar, UserCheck, Pencil } from 'lucide-react';
+import { Cloud, CloudOff, Calendar, UserCheck, Pencil, Globe } from 'lucide-react';
 
 interface HeaderProps {
   isSynced: boolean;
@@ -10,9 +10,31 @@ interface HeaderProps {
     monthly_budget: number;
   } | null;
   onEditProfile: () => void;
+  globalLanguage: string;
+  onLanguageChange: (lang: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isSynced, user, onEditProfile }) => {
+const INDIAN_LANGUAGES = [
+  { name: 'English', native: 'English' },
+  { name: 'Hindi', native: 'हिन्दी' },
+  { name: 'Marathi', native: 'मराठी' },
+  { name: 'Tamil', native: 'தமிழ்' },
+  { name: 'Telugu', native: 'తెలుగు' },
+  { name: 'Bengali', native: 'বাংলা' },
+  { name: 'Gujarati', native: 'ગુજરાતી' },
+  { name: 'Kannada', native: 'ಕನ್ನಡ' },
+  { name: 'Malayalam', native: 'മലയാളം' },
+  { name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+  { name: 'Odia', native: 'ଓଡ଼ିଆ' }
+];
+
+export const Header: React.FC<HeaderProps> = ({ 
+  isSynced, 
+  user, 
+  onEditProfile,
+  globalLanguage,
+  onLanguageChange
+}) => {
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -44,6 +66,23 @@ export const Header: React.FC<HeaderProps> = ({ isSynced, user, onEditProfile })
       </div>
 
       <div className="flex items-center gap-6">
+        {/* Language Selector Dropdown */}
+        <div className="flex items-center bg-orange-50 border border-orange-100/40 rounded-xl px-2.5 py-1.5 shadow-sm">
+          <Globe size={14} className="text-orange-500 mr-2" />
+          <select
+            value={globalLanguage}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer pr-1"
+            title="Select Language"
+          >
+            {INDIAN_LANGUAGES.map((lang) => (
+              <option key={lang.name} value={lang.name}>
+                {lang.native} ({lang.name})
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Sync Status Badge */}
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-300 ${
           isSynced 

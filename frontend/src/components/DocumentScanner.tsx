@@ -20,6 +20,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface DocumentScannerProps {
   onScanComplete: () => void;
+  globalLanguage: string;
 }
 
 interface ScannedDocument {
@@ -32,7 +33,9 @@ interface ScannedDocument {
   created_at: string;
 }
 
-export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete }) => {
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+
+export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, globalLanguage }) => {
   const [activeSubTab, setActiveSubTab] = useState<'scan' | 'vault'>('scan');
   
   // Scanner States
@@ -52,11 +55,60 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
     savings_recommendation: string;
   } | null>(null);
 
+  // Translation States
+  const [translation, setTranslation] = useState<{ summary: string; recommendation: string } | null>(null);
+  const [translating, setTranslating] = useState(false);
+
   // Vault States
   const [documents, setDocuments] = useState<ScannedDocument[]>([]);
   const [vaultLoading, setVaultLoading] = useState(false);
   const [vaultError, setVaultError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset translation when language changes
+  useEffect(() => {
+    setTranslation(null);
+  }, [globalLanguage]);
+
+  const translateResults = async () => {
+    if (!result || !GEMINI_API_KEY) return;
+    setTranslating(true);
+    try {
+      const prompt = `You are a professional translator. Translate the following text into ${globalLanguage} (using its native script/alphabet, e.g. Devanagari for Hindi/Marathi, Tamil script for Tamil, etc.). Maintain the formatting and details.
+      
+      Text to translate:
+      Summary: "${result.document.summary}"
+      Savings Recommendation: "${result.savings_recommendation}"
+      
+      Respond in this exact JSON format:
+      {
+        "summary": "translated summary here",
+        "recommendation": "translated savings recommendation here"
+      }`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        }),
+      });
+      const data = await res.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        setTranslation({
+          summary: parsed.summary || result.document.summary,
+          recommendation: parsed.recommendation || result.savings_recommendation
+        });
+      }
+    } catch (err) {
+      console.error("Translation failed:", err);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -301,6 +353,25 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
                 </div>
               </div>
 
+              {/* Translation Container */}
+              {translation && (
+                <div className="p-4 bg-orange-50/20 border-2 border-dashed border-orange-200 rounded-xl space-y-3.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-orange-600 uppercase tracking-wider">
+                    <span>🌐 Translated Details ({globalLanguage})</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase block">Scan Summary</span>
+                    <p className="text-xs text-gray-700 font-medium mt-0.5 leading-relaxed">{translation.summary}</p>
+                  </div>
+                  {translation.recommendation && (
+                    <div>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase block">Savings Recommendation</span>
+                      <p className="text-xs text-orange-700 font-semibold mt-0.5 leading-relaxed">{translation.recommendation}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="border border-orange-100 rounded-xl overflow-hidden">
                 <div className="bg-orange-50/50 px-4 py-3 border-b border-orange-100 flex items-center justify-between">
                   <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">
@@ -333,6 +404,19 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
               )}
 
               <div className="flex justify-end gap-3 pt-2">
+                {globalLanguage !== 'English' && GEMINI_API_KEY && !translation && (
+                  <button
+                    onClick={translateResults}
+                    disabled={translating}
+                    className="px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 font-semibold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {translating ? (
+                      <span className="animate-spin inline-block w-3 h-3 border border-orange-600 border-t-transparent rounded-full" />
+                    ) : (
+                      <span>🌐 Translate to {globalLanguage}</span>
+                    )}
+                  </button>
+                )}
                 <button 
                   onClick={resetScanner}
                   className="px-4 py-2 border border-orange-200 text-orange-600 font-semibold text-xs rounded-xl hover:bg-orange-50/50 transition-colors cursor-pointer"

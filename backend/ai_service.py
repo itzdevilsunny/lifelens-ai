@@ -79,9 +79,7 @@ def analyze_document_with_vision(file_path: str, filename: str) -> dict:
                   "details": "e.g. Take twice daily after food for 3 days"
                 }
               ],
-              
-              // If category is "notice":
-              "actions_required": ["Action 1 with due date", "Action 2"]
+              "savings_recommendation": "Identify if any prescribed medicines are expensive branded drugs. Suggest generic alternatives (chemical/salt name) and calculate estimate monthly savings at Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP) generic stores. (e.g. 'Branded Telma 40mg (Rs. 110/strip) -> PMBJP Generic Telmisartan (Rs. 18/strip). Save Rs. 92 (83%) per strip.')"
             }
             """
             response = client.models.generate_content(
@@ -152,7 +150,7 @@ def analyze_document_with_vision(file_path: str, filename: str) -> dict:
                 "details": "Take once daily after lunch for nutritional support."
             }
         ]
-        fallback_res["savings_recommendation"] = "Telmisartan is a chronic medicine. Buying generic equivalents instead of branded Telma-40 can cut your monthly medicine costs by up to 60%."
+        fallback_res["savings_recommendation"] = "• Branded drug: Telma 40mg (Rs. 110/strip) -> PMBJP Generic: Telmisartan 40mg (Rs. 18/strip). Savings: 83% (Save Rs. 92 per strip).\n• Branded drug: Augmentin 625 Duo (Rs. 201/strip) -> PMBJP Generic: Amoxicillin + Clavulanic Acid (Rs. 60/strip). Savings: 70% (Save Rs. 141 per strip).\n\n💡 Tip: Buy generic medicines from your nearest Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP) store to save up to 50-90% on chronic meds."
         
     elif any(k in name_lower for k in ["notice", "letter", "tax", "court", "govt", "municipal"]):
         fallback_res["category"] = "notice"

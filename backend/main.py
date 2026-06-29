@@ -297,12 +297,17 @@ def upload_document(file: UploadFile = File(...), db: Client = Depends(get_db)):
     # Analyze document using AI
     analysis = ai_service.analyze_document_with_vision(file_path, file.filename)
 
+    # Combine summary and savings recommendation to make it persist in the DB
+    full_summary = db_summary = analysis.get("summary", "")
+    if analysis.get("savings_recommendation"):
+        db_summary = f"{full_summary}\n\n💡 Optimization Tip: {analysis['savings_recommendation']}"
+
     # Store document record in Supabase
     doc_payload = {
         "filename": file.filename,
         "category": analysis.get("category", "other"),
         "extracted_text": analysis.get("extracted_text", ""),
-        "summary": analysis.get("summary", ""),
+        "summary": db_summary,
         "file_path": f"/uploads/{safe_filename}",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
