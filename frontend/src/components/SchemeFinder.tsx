@@ -187,9 +187,10 @@ Instructions:
       let reply = "";
 
       const hasProfileInfo = user && (user.state || user.occupation || user.age);
-      const isAskingForProfile = q.includes('profile') || q.includes('my detail') || q.includes('saved') || q.includes('my info') || q.includes('about me') || q.includes('my record');
+      const isAskingForProfile = q.includes('profile') || q.includes('my detail') || q.includes('saved') || q.includes('my info') || q.includes('about me') || q.includes('my record') || q.includes('for me') || q.includes('match me') || q.includes('eligible') || q.includes('suits') || q.includes('fits') || q.includes('recommend') || q.includes('my schemes') || q.includes('my match') || q.trim() === 'me' || q.trim() === 'for me';
+      const isGeneric = q.trim().length <= 6 || q.includes('hello') || q.includes('hi') || q.includes('hey') || q.includes('namaste');
 
-      if (isAskingForProfile && hasProfileInfo) {
+      if ((isAskingForProfile || isGeneric) && hasProfileInfo) {
         const matching: string[] = [];
         const uAge = parseInt(user.age || "0");
         const uState = (user.state || "").toLowerCase();
