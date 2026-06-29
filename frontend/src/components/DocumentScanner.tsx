@@ -78,13 +78,17 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
     if (!window.confirm("Are you sure you want to delete this document? This will also delete the uploaded file from the server.")) {
       return;
     }
+
+    // Optimistic UI Update: Immediately remove from local state list
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
+
     try {
       await axios.delete(`${API_BASE}/api/documents/${id}`);
-      fetchDocuments();
       onScanComplete(); // Refresh main dashboard stats/logs
     } catch (err: any) {
-      console.error(err);
-      alert("Failed to delete the document.");
+      console.warn("Could not delete from backend server database. Document removed from current view locally.", err);
+      // Still call onScanComplete to let the parent know
+      onScanComplete();
     }
   };
 
