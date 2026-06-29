@@ -241,12 +241,18 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate, gl
         replyText = res.data.reply;
       } catch {
         const q = query.toLowerCase();
-        if (q.includes('scheme') || q.includes('yojana')) {
-          replyText = "Key schemes:\n• PMJDY: Zero-balance bank account + ₹2L insurance\n• PM-JAY: ₹5L health cover\n• Mudra: Business loans up to ₹10L (no collateral)\n• APY: Pension ₹1k–5k/month from age 60\n• PM-KISAN: ₹6,000/year for farmers";
-        } else if (q.includes('budget') || q.includes('expense')) {
-          replyText = "Budget tip: Keep grocery below 30%, rent below 40%, savings above 20% of monthly income. Use the Expense Tracker tab to log daily spends.";
+        if (q.includes('hello') || q.includes('hi') || q.includes('hey') || q.includes('namaste') || q.includes('help') || q.includes('who are you')) {
+          replyText = "Namaste! I'm your LifeLens assistant. How can I help you today? You can ask me about your tasks, budget, medicine schedules, or eligible schemes!";
+        } else if (q.includes('scheme') || q.includes('yojana') || q.includes('benefit') || q.includes('government')) {
+          replyText = "Key schemes in our database:\n• PMJDY: Zero-balance bank account + ₹2L insurance\n• PM-JAY: ₹5L health cover\n• Mudra: Business loans up to ₹10L (no collateral)\n• APY: Pension ₹1k–5k/month from age 60\n• PM-KISAN: ₹6,000/year for farmers\n\nTo view state-specific schemes, head over to the Gov Schemes tab!";
+        } else if (q.includes('budget') || q.includes('expense') || q.includes('spend') || q.includes('money') || q.includes('saving')) {
+          replyText = "Budget tip: Keep grocery below 30%, rent below 40%, savings above 20% of monthly income. Use the Expense Tracker tab to log daily spends, check your savings health scores, and get optimization tips.";
+        } else if (q.includes('task') || q.includes('planner') || q.includes('todo') || q.includes('schedule') || q.includes('today')) {
+          replyText = "To manage your daily productivity, head over to the Daily Planner tab. There you can add new tasks, set target times, and check off completed items.";
+        } else if (q.includes('medicine') || q.includes('pill') || q.includes('doctor') || q.includes('remind') || q.includes('health') || q.includes('dose')) {
+          replyText = "You can track your medication timings under the Smart Reminders tab. Use the OCR Scanner tab to upload prescription images to set these schedules automatically.";
         } else {
-          replyText = "I'm in offline mode. Please set VITE_GEMINI_API_KEY in Vercel environment variables for full AI responses.";
+          replyText = "I am LifeLens AI, your offline personal assistant. I can help with government schemes, health reminders, daily tasks, and household budgets. Please try asking about those, or configure VITE_GEMINI_API_KEY for conversational AI.";
         }
       }
     }
@@ -412,7 +418,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate, gl
             <Bot size={18} />
           </div>
           <div className="text-left">
-            <h3 className="font-bold text-gray-800 text-base">LifePilot AI Companion</h3>
+            <h3 className="font-bold text-gray-800 text-base">LifeLens AI Companion</h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className={`w-1.5 h-1.5 rounded-full ${GEMINI_API_KEY ? 'bg-green-500' : 'bg-orange-400'}`}></div>
               <p className="text-xs text-gray-400">
