@@ -143,6 +143,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
   const [vaultLoading, setVaultLoading] = useState(false);
   const [vaultError, setVaultError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   // Reset translation when language changes
   useEffect(() => {
@@ -212,9 +213,17 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
   };
 
   const handleDeleteDocument = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this document? This will also delete the uploaded file from the server.")) {
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      // Auto-reset after 3 seconds
+      setTimeout(() => {
+        setConfirmDeleteId(prev => prev === id ? null : prev);
+      }, 3000);
       return;
     }
+
+    // Reset confirmation state
+    setConfirmDeleteId(null);
 
     // Optimistic UI Update: Immediately remove from local state list
     setDocuments(prev => {
@@ -713,10 +722,18 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
                       </a>
                       <button
                         onClick={() => handleDeleteDocument(doc.id)}
-                        className="p-2 border border-rose-100 bg-white rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Delete Document"
+                        className={`p-2 border rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center shrink-0 ${
+                          confirmDeleteId === doc.id
+                            ? 'border-rose-500 bg-rose-500 text-white hover:bg-rose-600 scale-105 px-3'
+                            : 'border-rose-100 bg-white text-rose-500 hover:bg-rose-50'
+                        }`}
+                        title={confirmDeleteId === doc.id ? "Click again to confirm delete" : "Delete Document"}
                       >
-                        <Trash2 size={12} />
+                        {confirmDeleteId === doc.id ? (
+                          <span className="text-[10px] font-bold">Confirm?</span>
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
                       </button>
                     </div>
                   </div>
