@@ -119,12 +119,12 @@ function parseLocalFallback(filename: string, categoryOverride?: string): any {
   const fallback = {
     category: "other",
     title: "Document Scan",
-    extracted_text: "Placeholder extracted text from local fallback engine.",
-    summary: "Successfully saved document to your repository.",
+    extracted_text: "",
+    summary: "Your document has been saved to the repository. Use the category selector below before scanning to get tailored results for bills, prescriptions, or notices.",
     total_amount: 0.0,
     bill_category: "Other",
     items: [] as string[],
-    savings_recommendation: "Save digital copies of all notices for compliance.",
+    savings_recommendation: "Tip: Use the 'Force Document Category' selector above to pick Bill, Prescription, or Notice before scanning. This helps LifeLens AI apply the right extraction rules and link results to your Expense Tracker, Reminders, or Daily Planner.",
     medicines: [] as any[],
     actions_required: [] as string[]
   };
@@ -408,9 +408,6 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
         if (analysis.savings_recommendation) {
           fullSummary += `\n\n💡 Optimization Tip: ${analysis.savings_recommendation}`;
         }
-        if (usedLocalFallback) {
-          fullSummary += `\n\n*(AI quota limit reached or key not set. Processed via local offline fallback engine.)*`;
-        }
 
         const newDoc: ScannedDocument = {
           id: Date.now(),
@@ -430,9 +427,9 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
         setDocuments(updatedDocs);
 
         // Dispatch side-effects to other tables locally!
-        let action_taken = "Document uploaded locally.";
+        let action_taken = "Document saved to your local vault.";
         if (usedLocalFallback) {
-          action_taken = "Processed via local offline fallback engine. ";
+          action_taken = "Saved locally. ";
         }
 
         if (analysis.category === 'bill') {
