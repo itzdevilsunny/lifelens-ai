@@ -154,6 +154,18 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
           contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
         }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData?.error?.message || `API error ${res.status}`;
+        if (res.status === 429) {
+          setAdviceResponse(`Gemini API Quota Exceeded (429): ${errMsg}`);
+        } else {
+          setAdviceResponse(`AI Error: ${errMsg}`);
+        }
+        return;
+      }
+
       const data = await res.json();
       const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to retrieve advice. Please try again.";
       setAdviceResponse(answer);
