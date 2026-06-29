@@ -35,6 +35,85 @@ interface ScannedDocument {
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
+async function callGeminiVisionOCR(file: File): Promise<any> {
+  if (!GEMINI_API_KEY) throw new Error("No VITE_GEMINI_API_KEY set");
+
+  // Read file as base64
+  const base64Data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+
+  const mimeType = file.type || 'image/jpeg';
+  const prompt = `You are a helpful personal assistant OCR and vision analysis agent.
+Analyze this uploaded document/image (which could be a grocery bill, utility invoice, medical prescription, or government notice).
+
+Extract the content and classify it into one of these categories: "bill", "prescription", "notice", "other".
+
+Based on the category, extract the structured details and output ONLY a single JSON object. Do not wrap it in markdown code blocks.
+
+Schema:
+{
+  "category": "bill" | "prescription" | "notice" | "other",
+  "title": "A short, descriptive title (e.g. 'D-Mart Grocery Bill', 'Dr. Patel Prescription', 'Tax Notice')",
+  "extracted_text": "All raw OCR text extracted from the document",
+  "summary": "A concise 1-2 sentence explanation of what this document is about",
+  
+  // If category is "bill":
+  "total_amount": 1250.50,
+  "bill_category": "Grocery" | "Electricity" | "Medicine" | "Rent" | "Other",
+  "items": ["Item name 1 - Price", "Item name 2 - Price"],
+  "savings_recommendation": "Suggest how to save money on this bill...",
+  
+  // If category is "prescription":
+  "medicines": [
+    {
+      "name": "Medicine name (e.g. Paracetamol 650mg)",
+      "dosage": "e.g. 1 tablet",
+      "time": "e.g. 08:00, 20:00",
+      "details": "e.g. Take twice daily after food for 3 days"
+    }
+  ],
+  "savings_recommendation": "Identify if any prescribed medicines are expensive branded drugs. Suggest generic alternatives (chemical/salt name) and calculate estimate monthly savings at Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP) generic stores. (e.g. 'Branded Telma 40mg (Rs. 110/strip) -> PMBJP Generic Telmisartan (Rs. 18/strip). Save Rs. 92 (83%) per strip.')"
+}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        role: "user",
+        parts: [
+          { inline_data: { mime_type: mimeType, data: base64Data } },
+          { text: prompt }
+        ]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.4
+      }
+    })
+  });
+
+  if (!res.ok) throw new Error(`Gemini Vision error: ${res.status}`);
+  const data = await res.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  
+  // Clean up potential markdown wrapping
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+  return JSON.parse(rawText);
+}
+
 export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete, globalLanguage }) => {
   const [activeSubTab, setActiveSubTab] = useState<'scan' | 'vault'>('scan');
   
@@ -112,135 +191,20 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fileToBase64 = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  const runClientSideOcr = async (file: File) => {
-    const base64 = await fileToBase64(file);
-    const mimeType = file.type || 'image/png';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const prompt = `You are a helpful personal assistant OCR and vision analysis agent.
-Analyze this uploaded document/image (which could be a grocery bill, utility invoice, medical prescription, or government notice).
-
-Extract the content and classify it into one of these categories: "bill", "prescription", "notice", "other".
-
-Based on the category, extract the following structured details in JSON format.
-Do not write any preamble or code wrapper outside of the JSON block. Return ONLY a single JSON object.
-
-Schema:
-{
-  "category": "bill" | "prescription" | "notice" | "other",
-  "title": "A short, descriptive title (e.g. 'D-Mart Grocery Bill', 'Dr. Patel Prescription', 'Tax Notice')",
-  "extracted_text": "All raw OCR text extracted from the document",
-  "summary": "A concise 1-2 sentence explanation of what this document is about",
-  
-  // If category is "bill":
-  "total_amount": 1250.50,
-  "bill_category": "Grocery" | "Electricity" | "Medicine" | "Rent" | "Other",
-  "items": ["Item name 1 - Price", "Item name 2 - Price"],
-  "savings_recommendation": "Suggest how to save money on this bill"
-  
-  // If category is "prescription":
-  "medicines": [
-    {
-      "name": "Medicine name (e.g. Paracetamol 650mg)",
-      "dosage": "e.g. 1 tablet",
-      "time": "e.g. 08:00, 20:00",
-      "details": "e.g. Take twice daily after food for 3 days"
-    }
-  ],
-  "savings_recommendation": "Identify if any prescribed medicines are expensive branded drugs. Suggest generic alternatives (chemical/salt name) and calculate estimate monthly savings at Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP) generic stores. (e.g. 'Branded Telma 40mg (Rs. 110/strip) -> PMBJP Generic Telmisartan (Rs. 18/strip). Save Rs. 92 (83%) per strip.')"
-}`;
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [
-            { inline_data: { mime_type: mimeType, data: base64 } },
-            { text: prompt }
-          ]
-        }]
-      })
-    });
-
-    if (!res.ok) throw new Error(`Gemini vision API error: ${res.status}`);
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON block returned by vision model");
-    
-    const parsed = JSON.parse(jsonMatch[0]);
-    
-    const simulatedDocId = Date.now();
-    const mockFilePath = URL.createObjectURL(file); // Allows user to view the image locally!
-
-    return {
-      success: true,
-      document: {
-        id: simulatedDocId,
-        filename: file.name,
-        category: parsed.category || "other",
-        summary: parsed.summary || "Scanned document details",
-        extracted_text: parsed.extracted_text || "",
-        file_path: mockFilePath,
-        created_at: new Date().toLocaleDateString()
-      },
-      action_taken: parsed.category === 'bill' 
-        ? `Added as local expense under '${parsed.bill_category}' for Rs. ${parsed.total_amount}`
-        : "Document scanned and logged locally",
-      savings_recommendation: parsed.savings_recommendation || ""
-    };
-  };
-
   const fetchDocuments = async () => {
     setVaultLoading(true);
     setVaultError(null);
     try {
       const res = await axios.get(`${API_BASE}/api/documents`);
       setDocuments(res.data);
-      localStorage.setItem('lifepilot_scanned_documents', JSON.stringify(res.data));
+      localStorage.setItem('lifepilot_documents', JSON.stringify(res.data));
     } catch (err: any) {
-      console.warn("Could not fetch historical documents from backend. Loading from local cache.", err);
-      const cachedDocs = localStorage.getItem('lifepilot_scanned_documents');
+      console.warn("Failed to fetch historical documents from backend. Loading from local storage fallback:", err);
+      const cachedDocs = localStorage.getItem('lifepilot_documents');
       if (cachedDocs) {
         setDocuments(JSON.parse(cachedDocs));
       } else {
-        // Fallback to placeholder mock documents so the vault is never empty/broken
-        const mockDocs = [
-          {
-            id: 1,
-            filename: "sample_prescription.png",
-            category: "prescription",
-            summary: "Doctor prescription recommending medications for blood pressure and general health. Scheduled reminders for Telmisartan 40mg.",
-            extracted_text: "Rx: Telmisartan 40mg once daily in morning. Multivitamins once daily.",
-            file_path: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=300&auto=format&fit=crop",
-            created_at: new Date().toLocaleDateString()
-          },
-          {
-            id: 2,
-            filename: "electricity_june_2026.png",
-            category: "bill",
-            summary: "Monthly electricity consumption bill for June 2026. Total due is Rs. 1,850.",
-            extracted_text: "MSEB bill. Total: Rs. 1850.",
-            file_path: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=300&auto=format&fit=crop",
-            created_at: new Date().toLocaleDateString()
-          }
-        ];
-        setDocuments(mockDocs);
-        localStorage.setItem('lifepilot_scanned_documents', JSON.stringify(mockDocs));
+        setDocuments([]);
       }
     } finally {
       setVaultLoading(false);
@@ -248,14 +212,14 @@ Schema:
   };
 
   const handleDeleteDocument = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this document?")) {
+    if (!window.confirm("Are you sure you want to delete this document? This will also delete the uploaded file from the server.")) {
       return;
     }
 
     // Optimistic UI Update: Immediately remove from local state list
     setDocuments(prev => {
       const updated = prev.filter(doc => doc.id !== id);
-      localStorage.setItem('lifepilot_scanned_documents', JSON.stringify(updated));
+      localStorage.setItem('lifepilot_documents', JSON.stringify(updated));
       return updated;
     });
 
@@ -264,7 +228,6 @@ Schema:
       onScanComplete(); // Refresh main dashboard stats/logs
     } catch (err: any) {
       console.warn("Could not delete from backend server database. Document removed from current view locally.", err);
-      // Still call onScanComplete to let the parent know
       onScanComplete();
     }
   };
@@ -326,52 +289,125 @@ Schema:
 
       if (res.data.success) {
         setResult(res.data);
-        // Append to local cache
-        const cachedDocs = localStorage.getItem('lifepilot_scanned_documents');
-        const docsList = cachedDocs ? JSON.parse(cachedDocs) : [];
-        const updatedList = [res.data.document, ...docsList];
-        localStorage.setItem('lifepilot_scanned_documents', JSON.stringify(updatedList));
-        
         onScanComplete(); // Refresh parent dashboard tables
       } else {
-        // Fallback: Run direct client-side Gemini Vision OCR if backend fails
-        if (GEMINI_API_KEY) {
-          try {
-            const clientResult = await runClientSideOcr(file);
-            setResult(clientResult);
-            
-            const cachedDocs = localStorage.getItem('lifepilot_scanned_documents');
-            const docsList = cachedDocs ? JSON.parse(cachedDocs) : [];
-            const updatedList = [clientResult.document, ...docsList];
-            localStorage.setItem('lifepilot_scanned_documents', JSON.stringify(updatedList));
-            
-            onScanComplete();
-            return;
-          } catch (visionErr: any) {
-            console.error("Client-side Vision OCR failed:", visionErr);
-          }
-        }
         setError("Scanning failed. Please try again.");
       }
     } catch (err: any) {
-      console.warn("Backend OCR connection failed. Attempting client-side fallback...", err);
-      if (GEMINI_API_KEY) {
-        try {
-          const clientResult = await runClientSideOcr(file);
-          setResult(clientResult);
-          
-          const cachedDocs = localStorage.getItem('lifepilot_scanned_documents');
-          const docsList = cachedDocs ? JSON.parse(cachedDocs) : [];
-          const updatedList = [clientResult.document, ...docsList];
-          localStorage.setItem('lifepilot_scanned_documents', JSON.stringify(updatedList));
-          
-          onScanComplete();
-          return;
-        } catch (visionErr: any) {
-          console.error("Client-side Vision OCR fallback failed:", visionErr);
-        }
+      console.warn("Backend OCR upload failed. Attempting direct browser-side Gemini Vision OCR...", err);
+      
+      if (!GEMINI_API_KEY) {
+        setError(err.response?.data?.detail || "Error connecting to the OCR scanning service. Set VITE_GEMINI_API_KEY for offline fallback scanning.");
+        setLoading(false);
+        return;
       }
-      setError(err.response?.data?.detail || "Error connecting to the OCR scanning service.");
+
+      try {
+        // Direct browser OCR
+        const analysis = await callGeminiVisionOCR(file);
+        
+        // Mock a file path (object URL so user can view it in the session)
+        const localUrl = URL.createObjectURL(file);
+
+        // Combined summary to persist
+        let fullSummary = analysis.summary || "";
+        if (analysis.savings_recommendation) {
+          fullSummary += `\n\n💡 Optimization Tip: ${analysis.savings_recommendation}`;
+        }
+
+        const newDoc: ScannedDocument = {
+          id: Date.now(),
+          filename: file.name,
+          category: analysis.category || "other",
+          summary: fullSummary,
+          extracted_text: analysis.extracted_text || "",
+          file_path: localUrl,
+          created_at: new Date().toISOString().replace('T', ' ').split('.')[0]
+        };
+
+        // Save to local storage list
+        const cachedDocs = localStorage.getItem('lifepilot_documents');
+        const docsList = cachedDocs ? JSON.parse(cachedDocs) : [];
+        const updatedDocs = [newDoc, ...docsList];
+        localStorage.setItem('lifepilot_documents', JSON.stringify(updatedDocs));
+        setDocuments(updatedDocs);
+
+        // Dispatch side-effects to other tables locally!
+        let action_taken = "Document uploaded locally.";
+        if (analysis.category === 'bill') {
+          const newExp = {
+            id: Date.now(),
+            title: analysis.title || `Scanned Bill (${file.name})`,
+            amount: parseFloat(analysis.total_amount || 0.0),
+            category: analysis.bill_category || "Other",
+            date: new Date().toISOString().split('T')[0],
+            doc_id: newDoc.id
+          };
+          const cachedExpenses = localStorage.getItem('lifepilot_expenses');
+          const expensesList = cachedExpenses ? JSON.parse(cachedExpenses) : [];
+          localStorage.setItem('lifepilot_expenses', JSON.stringify([newExp, ...expensesList]));
+          action_taken = `Added as local expense under '${newExp.category}' for Rs. ${newExp.amount}.`;
+        } else if (analysis.category === 'prescription') {
+          const meds = analysis.medicines || [];
+          const cachedReminders = localStorage.getItem('lifepilot_reminders');
+          const remindersList = cachedReminders ? JSON.parse(cachedReminders) : [];
+          const addedRemNames: string[] = [];
+          
+          meds.forEach((m: any, idx: number) => {
+            const newRem = {
+              id: Date.now() + idx,
+              title: `Take ${m.name || 'Medicine'}`,
+              time: m.time || "08:00",
+              type: "medicine",
+              details: `Dosage: ${m.dosage || '1 tablet'}. Details: ${m.details || ''}`,
+              is_active: true
+            };
+            remindersList.push(newRem);
+            addedRemNames.push(m.name || 'Medicine');
+          });
+
+          localStorage.setItem('lifepilot_reminders', JSON.stringify(remindersList));
+          action_taken = `Scheduled local medicine reminders for: ${addedRemNames.join(', ')}.`;
+        } else if (analysis.category === 'notice') {
+          const actions = analysis.actions_required || [];
+          const cachedTasks = localStorage.getItem('lifepilot_tasks');
+          const tasksList = cachedTasks ? JSON.parse(cachedTasks) : [];
+          
+          actions.forEach((act: string, idx: number) => {
+            const newTask = {
+              id: Date.now() + idx,
+              title: `Notice action: ${act}`,
+              due_time: "09:00",
+              date: new Date().toISOString().split('T')[0],
+              is_completed: false
+            };
+            tasksList.push(newTask);
+          });
+
+          localStorage.setItem('lifepilot_tasks', JSON.stringify(tasksList));
+          action_taken = "Created notice action tasks on your daily planner.";
+        }
+
+        // Trigger scan complete callback in parent to sync dashboard view
+        onScanComplete();
+
+        // Show successful scanning result state
+        setResult({
+          document: {
+            id: newDoc.id,
+            filename: newDoc.filename,
+            category: newDoc.category,
+            summary: fullSummary,
+            file_path: localUrl
+          },
+          action_taken,
+          savings_recommendation: analysis.savings_recommendation || ""
+        });
+
+      } catch (clientErr: any) {
+        console.error("Client-side OCR failed:", clientErr);
+        setError("Error connecting to the OCR scanning service: " + (clientErr.message || clientErr));
+      }
     } finally {
       setLoading(false);
     }
@@ -667,7 +703,7 @@ Schema:
 
                     <div className="flex items-center gap-2 sm:self-center self-end shrink-0">
                       <a
-                        href={doc.file_path.startsWith('blob:') || doc.file_path.startsWith('http') ? doc.file_path : `${API_BASE}${doc.file_path}`}
+                        href={`${API_BASE}${doc.file_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 border border-orange-100 rounded-lg text-orange-500 hover:bg-orange-50 bg-white transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
