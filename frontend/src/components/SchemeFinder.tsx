@@ -23,6 +23,7 @@ interface Scheme {
   eligibility: string;
   benefit: string;
   state: string;
+  apply_url?: string;
 }
 
 interface SchemeFinderProps {
@@ -329,6 +330,19 @@ Instructions:
                             {scheme.benefit}
                           </p>
                         </div>
+
+                        {scheme.apply_url && (
+                          <div className="pt-2">
+                            <a
+                              href={scheme.apply_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-md shadow-orange-500/15 hover:shadow-orange-500/25 transition-all duration-300 transform active:scale-95 cursor-pointer no-underline"
+                            >
+                              Apply Now &rarr;
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
