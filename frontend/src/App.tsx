@@ -211,8 +211,8 @@ function App() {
       let cachedSchemesVal = cachedSchemes;
       if (cachedSchemesVal) {
         const parsed = JSON.parse(cachedSchemesVal);
-        // Force upgrade if cache does not contain apply_url fields
-        if (parsed.length > 0 && !parsed[0].hasOwnProperty('apply_url')) {
+        // Force upgrade if cache does not contain apply_url fields or contains www.pmjdy.gov.in URL
+        if (parsed.length > 0 && (!parsed[0].hasOwnProperty('apply_url') || parsed[0].apply_url === "https://www.pmjdy.gov.in/")) {
           localStorage.removeItem('lifepilot_schemes');
           cachedSchemesVal = null;
         }
@@ -229,7 +229,7 @@ function App() {
             eligibility: "Any Indian citizen above 10 years of age who does not have an existing bank account.",
             benefit: "Zero-balance savings account, RuPay debit card, Rs. 2 Lakh accidental insurance cover, and overdraft facility up to Rs. 10,000.",
             state: "All",
-            apply_url: "https://www.pmjdy.gov.in/"
+            apply_url: "https://pmjdy.gov.in/"
           },
           {
             id: 2,
