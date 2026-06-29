@@ -52,6 +52,8 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate }) 
   const [speechEnabled, setSpeechEnabled] = useState(true);
   const [selectedLang, setSelectedLang] = useState<'en-IN' | 'hi-IN'>('en-IN');
   const [aiMode, setAiMode] = useState<'direct' | 'backend'>('direct');
+  const [micError, setMicError] = useState<string | null>(null);
+  const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'listening' | 'error'>('idle');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -185,39 +187,106 @@ Provide a helpful, context-aware response:`;
     setLoading(false);
   };
 
-  const toggleListening = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Voice recognition needs Chrome, Edge, or Safari.");
-      return;
-    }
-
+  const toggleListening = async () => {
+    // Stop if already listening
     if (isListening) {
       if (recognitionRef.current) recognitionRef.current.stop();
       setIsListening(false);
-    } else {
-      window.speechSynthesis.cancel();
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = selectedLang;
+      setMicStatus('idle');
+      return;
+    }
 
-      rec.onstart = () => setIsListening(true);
-      rec.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInputText(transcript);
-          handleSend(transcript);
-        }
-      };
-      rec.onerror = (e: any) => {
-        console.error("Speech recognition error:", e);
-        setIsListening(false);
-      };
-      rec.onend = () => setIsListening(false);
+    // Check browser support
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setMicError('Voice recognition needs Chrome, Edge, or Safari.');
+      setMicStatus('error');
+      return;
+    }
 
-      recognitionRef.current = rec;
+    // Step 1 — Explicitly request mic permission via getUserMedia first
+    // This shows the browser's native permission dialog on first use
+    setMicStatus('requesting');
+    setMicError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Permission granted — stop the test stream immediately
+      stream.getTracks().forEach(t => t.stop());
+    } catch (permErr: any) {
+      setMicStatus('error');
+      if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+        setMicError('Microphone blocked. Click the 🔒 lock icon in your browser address bar → allow microphone → try again.');
+      } else if (permErr.name === 'NotFoundError' || permErr.name === 'DevicesNotFoundError') {
+        setMicError('No microphone found. Plug in a mic and try again.');
+      } else if (permErr.name === 'NotReadableError') {
+        setMicError('Microphone is in use by another app. Close other apps using the mic.');
+      } else {
+        setMicError(`Mic error: ${permErr.message}. Try typing your question instead.`);
+      }
+      return;
+    }
+
+    // Step 2 — Start Speech Recognition
+    window.speechSynthesis.cancel();
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = selectedLang;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => {
+      setIsListening(true);
+      setMicStatus('listening');
+      setMicError(null);
+    };
+
+    rec.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript && transcript.trim()) {
+        setInputText(transcript);
+        handleSend(transcript);
+      }
+    };
+
+    rec.onerror = (e: any) => {
+      console.error('Speech recognition error:', e.error, e);
+      setIsListening(false);
+      setMicStatus('error');
+      switch (e.error) {
+        case 'not-allowed':
+        case 'service-not-allowed':
+          setMicError('Microphone blocked. Allow mic access in your browser → 🔒 lock icon in address bar.');
+          break;
+        case 'no-speech':
+          setMicError('No speech detected. Speak clearly closer to the mic and try again.');
+          setMicStatus('idle');
+          break;
+        case 'audio-capture':
+          setMicError('Cannot access microphone. Check that a mic is plugged in and not muted.');
+          break;
+        case 'network':
+          setMicError('Network error during speech recognition. Check your connection.');
+          break;
+        case 'aborted':
+          setMicError(null);
+          setMicStatus('idle');
+          break;
+        default:
+          setMicError(`Recognition failed (${e.error}). Try typing your question.`);
+      }
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+      if (micStatus === 'listening') setMicStatus('idle');
+    };
+
+    recognitionRef.current = rec;
+    try {
       rec.start();
+    } catch (startErr: any) {
+      setMicStatus('error');
+      setMicError(`Could not start microphone: ${startErr.message}`);
     }
   };
 
@@ -357,18 +426,44 @@ Provide a helpful, context-aware response:`;
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Mic error banner */}
+      {micError && (
+        <div className="mb-3 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2.5 text-xs leading-relaxed">
+          <span className="text-base shrink-0">🎙️</span>
+          <span className="flex-1">{micError}</span>
+          <button
+            onClick={() => { setMicError(null); setMicStatus('idle'); }}
+            className="shrink-0 text-red-400 hover:text-red-600 font-bold cursor-pointer"
+          >✕</button>
+        </div>
+      )}
+
       {/* Input panel */}
       <div className="flex gap-2.5 items-center">
         <button
           onClick={toggleListening}
+          disabled={micStatus === 'requesting'}
           className={`p-3.5 rounded-xl text-white font-bold cursor-pointer transition-all duration-200 shadow-md flex-shrink-0 ${
-            isListening
-              ? 'bg-red-500 pulse-active shadow-red-500/20'
+            micStatus === 'requesting'
+              ? 'bg-yellow-400 shadow-yellow-400/20 cursor-wait'
+              : isListening
+              ? 'bg-red-500 shadow-red-500/20'
+              : micStatus === 'error'
+              ? 'bg-gray-400 hover:bg-orange-500 shadow-gray-400/10'
               : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/10'
           }`}
-          title={isListening ? "Listening — click to stop" : "Click to speak"}
+          title={
+            micStatus === 'requesting' ? 'Requesting mic permission...' :
+            isListening ? 'Listening — click to stop' :
+            micStatus === 'error' ? 'Mic error — click to retry' :
+            'Click to speak'
+          }
         >
-          <Mic size={18} />
+          {micStatus === 'requesting' ? (
+            <span className="animate-spin inline-block w-[18px] h-[18px] border-2 border-white border-t-transparent rounded-full" />
+          ) : (
+            <Mic size={18} />
+          )}
         </button>
 
         <div className="flex-1 relative flex items-center">
@@ -380,15 +475,26 @@ Provide a helpful, context-aware response:`;
               <div className="w-1 bg-orange-500 rounded-full animate-bounce" style={{ height: '80%', animationDuration: '0.5s', animationDelay: '0.3s' }}></div>
             </div>
           )}
+          {micStatus === 'requesting' && !isListening && (
+            <div className="absolute left-3 z-10 flex items-center gap-1.5 text-yellow-600">
+              <span className="animate-pulse text-xs font-semibold">Allow mic access in browser popup...</span>
+            </div>
+          )}
           <input
             type="text"
-            placeholder={isListening ? "Listening..." : "Ask anything — budget, schemes, medicines, tasks..."}
+            placeholder={
+              micStatus === 'requesting' ? '' :
+              isListening ? 'Listening...' :
+              'Ask anything — budget, schemes, medicines, tasks...'
+            }
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => { setInputText(e.target.value); if (micError) setMicError(null); }}
             onKeyDown={handleKeyDown}
-            disabled={isListening || loading}
+            disabled={isListening || loading || micStatus === 'requesting'}
             className={`w-full pr-12 py-3 border rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 transition-all placeholder-gray-300 disabled:bg-gray-50/50 ${
-              isListening ? 'pl-16 border-orange-300 bg-orange-50/20 font-semibold text-orange-500' : 'pl-4 border-orange-100'
+              isListening ? 'pl-16 border-orange-300 bg-orange-50/20 font-semibold text-orange-500' :
+              micStatus === 'requesting' ? 'pl-4 border-yellow-200 bg-yellow-50/30' :
+              'pl-4 border-orange-100'
             }`}
           />
           <button
