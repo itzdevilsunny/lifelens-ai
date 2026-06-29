@@ -58,7 +58,13 @@ async function callGeminiForSchemes(prompt: string, history: { role: string; par
     }),
   });
 
-  if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const errMsg = errData?.error?.message || `API error ${res.status}`;
+    const err: any = new Error(errMsg);
+    err.status = res.status;
+    throw err;
+  }
   const data = await res.json();
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "I apologize, I could not generate a response. Please try again.";
 }
@@ -167,19 +173,27 @@ Instructions:
       }]);
     } catch (err: any) {
       console.error(err);
-      // Friendly local fallback
+      // If quota/rate limit exceeded, show a clear message and still provide keyword-based help
+      const isQuota = err?.status === 429;
       const q = query.toLowerCase();
-      let reply = "I'm having trouble connecting to the AI system. ";
+      let reply = "";
+
       if (q.includes('business') || q.includes('loan') || q.includes('start') || q.includes('मुद्रा') || q.includes('लोन')) {
-        reply += "However, based on your query, you might be eligible for the **Pradhan Mantri Mudra Yojana (PMMY)** which offers collateral-free loans up to Rs. 10 Lakh. You can apply at your nearest commercial, regional, or rural bank.";
+        reply = "Based on your query, you might be eligible for the **Pradhan Mantri Mudra Yojana (PMMY)** which offers collateral-free loans up to Rs. 10 Lakh. You can apply at your nearest commercial, regional, or rural bank.";
       } else if (q.includes('zero') || q.includes('account') || q.includes('bank') || q.includes('खाता')) {
-        reply += "However, check out the **Pradhan Mantri Jan Dhan Yojana (PMJDY)**. It offers zero-balance savings accounts, a free RuPay debit card, and Rs. 2 Lakh accidental insurance. You can open an account at any bank branch.";
+        reply = "Check out the **Pradhan Mantri Jan Dhan Yojana (PMJDY)**. It offers zero-balance savings accounts, a free RuPay debit card, and Rs. 2 Lakh accidental insurance. You can open an account at any bank branch.";
       } else if (q.includes('health') || q.includes('hospital') || q.includes('medical') || q.includes('आयुष्मान')) {
-        reply += "You should look into **Ayushman Bharat (PM-JAY)**. It provides free health coverage up to Rs. 5 Lakh per family per year for secondary and tertiary care hospitalizations.";
+        reply = "Look into **Ayushman Bharat (PM-JAY)**. It provides free health coverage up to Rs. 5 Lakh per family per year for secondary and tertiary care hospitalizations.";
       } else if (q.includes('pension') || q.includes('old') || q.includes('बुढ़ापा') || q.includes('पेंशन')) {
-        reply += "You might match the **Atal Pension Yojana (APY)** (for age 18-40, provides ₹1k-5k monthly pension after age 60) or **PM Shram Yogi Maan-dhan (PM-SYM)** (pension of ₹3,000/month for unorganized workers).";
+        reply = "You might match the **Atal Pension Yojana (APY)** (for age 18-40, provides ₹1k-5k monthly pension after age 60) or **PM Shram Yogi Maan-dhan (PM-SYM)** (pension of ₹3,000/month for unorganized workers).";
+      } else if (q.includes('farmer') || q.includes('kisan') || q.includes('agriculture') || q.includes('किसान')) {
+        reply = "For farmers, check **PM-KISAN**: ₹6,000/year direct benefit transfer in 3 instalments. Also see **PM Fasal Bima Yojana** for crop insurance at subsidized premium rates.";
       } else {
-        reply += "Please try stating your age, occupation, and state (e.g. 'I am a 32yo small business owner in Maharashtra') so I can search matching schemes from the database.";
+        reply = "Please share your age, occupation, and state (e.g. 'I am a 32-year-old small business owner in Maharashtra') so I can match you with the best government schemes from our database.";
+      }
+
+      if (isQuota) {
+        reply += "\n\n*(AI quota limit reached for today. Showing pre-loaded scheme information. The AI advisor will be available again tomorrow.)*";
       }
 
       setChatMessages(prev => [...prev, {
