@@ -27,6 +27,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterDashboard }) =>
     setExpandedFaq(expandedFaq === index ? null : index);
   };
 
+  const featuresOrder: ('ocr' | 'finance' | 'schemes' | 'voice')[] = ['ocr', 'finance', 'schemes', 'voice'];
+  
+  const handleNextFeature = () => {
+    const idx = featuresOrder.indexOf(activeFeatureTab);
+    const nextIdx = (idx + 1) % featuresOrder.length;
+    setActiveFeatureTab(featuresOrder[nextIdx]);
+  };
+
+  const handlePrevFeature = () => {
+    const idx = featuresOrder.indexOf(activeFeatureTab);
+    const prevIdx = (idx - 1 + featuresOrder.length) % featuresOrder.length;
+    setActiveFeatureTab(featuresOrder[prevIdx]);
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans selection:bg-orange-100 selection:text-orange-800">
       {/* Sticky Top Header */}
@@ -460,6 +474,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterDashboard }) =>
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Back & Next Navigation Buttons */}
+          <div className="flex justify-center items-center gap-4 mt-8">
+            <button 
+              onClick={handlePrevFeature}
+              className="px-4 py-2 border border-orange-200 hover:bg-orange-50 text-orange-600 font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>&larr; Prev Feature</span>
+            </button>
+            <button 
+              onClick={handleNextFeature}
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-md shadow-orange-500/10 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>Next Feature &rarr;</span>
+            </button>
           </div>
         </div>
       </section>

@@ -6,7 +6,8 @@ import {
   SearchCode, 
   Mic, 
   FileText,
-  TrendingUp
+  TrendingUp,
+  LogOut
 } from 'lucide-react';
 import { t } from '../utils/translations';
 
@@ -19,9 +20,10 @@ interface SidebarProps {
   } | null;
   onEditProfile: () => void;
   globalLanguage: string;
+  onLogout?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onEditProfile, globalLanguage }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onEditProfile, globalLanguage, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', label: t('dashboard', globalLanguage), icon: LayoutDashboard },
     { id: 'planner', label: t('planner', globalLanguage), icon: CalendarCheck },
@@ -65,6 +67,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
             </button>
           );
         })}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-50/50 hover:text-rose-600 transition-all duration-300 pl-4 mt-6 cursor-pointer"
+          >
+            <LogOut size={18} className="text-rose-400" />
+            <span>{globalLanguage === 'Hindi' ? 'बाहर निकलें' : 'Exit to Landing'}</span>
+          </button>
+        )}
       </nav>
 
       {/* Footer Info */}

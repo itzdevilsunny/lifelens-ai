@@ -740,6 +740,7 @@ function App() {
         user={user}
         onEditProfile={() => setIsProfileModalOpen(true)}
         globalLanguage={globalLanguage}
+        onLogout={() => setViewMode('landing')}
       />
       
       {/* Main dashboard content area */}
