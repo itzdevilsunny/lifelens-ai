@@ -551,7 +551,7 @@ function App() {
           />
         );
       case 'schemes':
-        return <SchemeFinder schemes={schemes} globalLanguage={globalLanguage} />;
+        return <SchemeFinder schemes={schemes} globalLanguage={globalLanguage} user={user} />;
       case 'assistant':
         return <VoiceAssistant onDataUpdate={fetchAllData} globalLanguage={globalLanguage} />;
       default:

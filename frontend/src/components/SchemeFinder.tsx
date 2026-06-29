@@ -29,6 +29,7 @@ interface Scheme {
 interface SchemeFinderProps {
   schemes: Scheme[];
   globalLanguage: string;
+  user?: any;
 }
 
 interface ChatMessage {
@@ -70,7 +71,7 @@ async function callGeminiForSchemes(prompt: string, history: { role: string; par
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "I apologize, I could not generate a response. Please try again.";
 }
 
-export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLanguage }) => {
+export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLanguage, user }) => {
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'chat'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -104,7 +105,7 @@ export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLangu
       } catch {
         setChatMessages([{
           sender: 'assistant',
-          text: `Namaste! I am your Government Scheme Helper. Ask me anything in ${globalLanguage}.`,
+          text: `Namaste! I am your Government Scheme Helper. Ask me anything about schemes. Currently conversing in ${globalLanguage}.`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
       } finally {
@@ -148,11 +149,17 @@ export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLangu
     try {
       // Build context of all database schemes so AI knows what schemes exist
       const systemInstruction = `You are "LifeLens Scheme Finder Helper". You help everyday Indian citizens find and apply to government schemes.
+Here is the user's saved profile details:
+- Name: ${user?.name || "Not set"}
+- Age: ${user?.age || "Not set"}
+- State: ${user?.state || "Not set"}
+- Occupation: ${user?.occupation || "Not set"}
+
 Here is the official list of schemes available in our database:
 ${JSON.stringify(schemes, null, 2)}
 
 Instructions:
-1. Analyze the user's details or queries.
+1. Analyze the user's details or queries. If they refer to their profile or asks what schemes match their profile, read the profile details above.
 2. Recommend the best matching scheme(s) from the list above.
 3. State clearly WHY they match and what the BENEFIT is (using Rs / ₹).
 4. If details are missing (like state or occupation), politely ask for them to narrow down the search.
@@ -179,7 +186,40 @@ Instructions:
       const q = query.toLowerCase();
       let reply = "";
 
-      if (q.includes('business') || q.includes('loan') || q.includes('start') || q.includes('मुद्रा') || q.includes('लोन')) {
+      const hasProfileInfo = user && (user.state || user.occupation || user.age);
+      const isAskingForProfile = q.includes('profile') || q.includes('my detail') || q.includes('saved') || q.includes('my info') || q.includes('about me') || q.includes('my record');
+
+      if (isAskingForProfile && hasProfileInfo) {
+        const matching: string[] = [];
+        const uAge = parseInt(user.age || "0");
+        const uState = (user.state || "").toLowerCase();
+        const uOcc = (user.occupation || "").toLowerCase();
+
+        // 1. Mudra check
+        if (uOcc.includes('business') || uOcc.includes('owner') || uOcc.includes('shop') || uOcc.includes('start') || uOcc.includes('trade') || uOcc.includes('self') || uOcc.includes('businessman') || uOcc.includes('vendor')) {
+          matching.push(`• **Pradhan Mantri Mudra Yojana (PMMY)**: As a ${user.occupation || 'business owner'}, you are eligible for collateral-free business loans up to Rs. 10 Lakh.`);
+        }
+        // 2. APY / PM-SYM check
+        if (uAge >= 18 && uAge <= 40) {
+          matching.push(`• **Atal Pension Yojana (APY)**: As you are ${uAge} years old (within the 18-40 range), you can contribute to receive a guaranteed monthly pension of Rs. 1,000 to Rs. 5,000 after age 60.`);
+          matching.push(`• **PM Shram Yogi Maan-dhan (PM-SYM)**: Provides a ₹3,000/month old-age pension for unorganized workers (eligible age 18-40).`);
+        }
+        // 3. State specific check
+        if (uState.includes('madhya') || uState.includes('mp') || uState.includes('pradesh')) {
+          matching.push(`• **Ladli Behna Yojana (MP State)**: State welfare scheme for women in MP, providing Rs. 1,250 monthly direct benefit transfer.`);
+        }
+        if (uState.includes('maharashtra') || uState.includes('mh')) {
+          matching.push(`• **Sanjay Gandhi Niradhar Yojana (Maharashtra)**: Financial assistance of Rs. 1,000/month for destitute or disabled individuals.`);
+        }
+        // 4. Farmer check
+        if (uOcc.includes('farmer') || uOcc.includes('kisan') || uOcc.includes('agriculture') || uOcc.includes('cultivator')) {
+          matching.push(`• **PM-KISAN**: Provides Rs. 6,000 per year direct income support in three equal installments of Rs. 2,000.`);
+        }
+        // 5. Default PMJDY zero-balance account check
+        matching.push(`• **Pradhan Mantri Jan Dhan Yojana (PMJDY)**: Open zero-balance savings bank accounts with Rs. 2 Lakh accidental insurance cover.`);
+
+        reply = `Based on your profile (Age: ${user.age || 'Not set'}, Occupation: ${user.occupation || 'Not set'}, State: ${user.state || 'Not set'}), here are the schemes matching you:\n\n${matching.join('\n')}`;
+      } else if (q.includes('business') || q.includes('loan') || q.includes('start') || q.includes('मुद्रा') || q.includes('लोन')) {
         reply = "Based on your query, you might be eligible for the **Pradhan Mantri Mudra Yojana (PMMY)** which offers collateral-free loans up to Rs. 10 Lakh. You can apply at your nearest commercial, regional, or rural bank.";
       } else if (q.includes('zero') || q.includes('account') || q.includes('bank') || q.includes('खाता')) {
         reply = "Check out the **Pradhan Mantri Jan Dhan Yojana (PMJDY)**. It offers zero-balance savings accounts, a free RuPay debit card, and Rs. 2 Lakh accidental insurance. You can open an account at any bank branch.";
