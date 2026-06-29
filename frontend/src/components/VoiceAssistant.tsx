@@ -66,12 +66,12 @@ async function callGeminiAudio(
 
   const mimeType = audioBlob.type || 'audio/webm';
 
-  const prompt = `You are LifePilot AI, a helpful personal assistant for everyday Indians.
+  const prompt = `You are LifeLens AI, a helpful personal assistant for everyday Indians.
 
 The user just spoke in ${languageHint}. The audio recording is attached.
 
 Step 1: Transcribe exactly what the user said (in their original language/script).
-Step 2: Respond helpfully as LifePilot AI. The "reply" field MUST be written entirely in the selected language: ${targetLanguage} (using its native script/font, e.g. Devanagari for Hindi/Marathi, Tamil script for Tamil, Kannada script for Kannada, etc.).
+Step 2: Respond helpfully as LifeLens AI. The "reply" field MUST be written entirely in the selected language: ${targetLanguage} (using its native script/font, e.g. Devanagari for Hindi/Marathi, Tamil script for Tamil, Kannada script for Kannada, etc.).
 
 Your response MUST be in this exact JSON format:
 {
@@ -123,7 +123,7 @@ Focus on: budget tracking, expense management, government schemes (PMJDY, Mudra,
 
 // ─── Helper: build text-only prompt ──────────────────────────────────────────
 function buildPrompt(query: string, targetLanguage: string): string {
-  return `You are LifePilot AI, a personal assistant for everyday Indians. Help with:
+  return `You are LifeLens AI, a personal assistant for everyday Indians. Help with:
 - Daily task planning and productivity
 - Medicine reminders and health schedules  
 - Budget tracking, expense optimization (use ₹/Rs.)
@@ -151,14 +151,14 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate, gl
       if (!GEMINI_API_KEY) {
         setMessages([{
           sender: 'assistant',
-          text: `Hello! I am LifePilot AI. Please configure VITE_GEMINI_API_KEY for conversational AI responses in ${globalLanguage}.`,
+          text: `Hello! I am LifeLens AI. Please configure VITE_GEMINI_API_KEY for conversational AI responses in ${globalLanguage}.`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
         return;
       }
       setLoading(true);
       try {
-        const welcomePrompt = `Generate a warm, friendly 2-sentence welcome greeting as LifePilot AI (everyday helper) introducing yourself. State that the user can speak or type in any Indian language. The greeting MUST be entirely in the selected language: ${globalLanguage} (using its native script/alphabet).`;
+        const welcomePrompt = `Generate a warm, friendly 2-sentence welcome greeting as LifeLens AI (everyday helper) introducing yourself. State that the user can speak or type in any Indian language. The greeting MUST be entirely in the selected language: ${globalLanguage} (using its native script/alphabet).`;
         const welcomeText = await callGeminiText(welcomePrompt);
         setMessages([{
           sender: 'assistant',
@@ -168,7 +168,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataUpdate, gl
       } catch {
         setMessages([{
           sender: 'assistant',
-          text: `Namaste! I am LifePilot AI, your everyday companion. Currently conversing in ${globalLanguage}. Ask me anything!`,
+          text: `Namaste! I am LifeLens AI, your everyday companion. Currently conversing in ${globalLanguage}. Ask me anything!`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
       } finally {

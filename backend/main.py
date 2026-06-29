@@ -12,7 +12,7 @@ import schemas
 import ai_service
 
 # Initialize FastAPI App
-app = FastAPI(title="LifePilot AI API", version="2.0.0")
+app = FastAPI(title="LifeLens AI API", version="2.0.0")
 
 # Enable CORS for frontend
 app.add_middleware(

@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
           <LayoutDashboard size={20} />
         </div>
         <div>
-          <h1 className="font-bold text-lg text-gray-800 leading-none">LifePilot AI</h1>
+          <h1 className="font-bold text-lg text-gray-800 leading-none">LifeLens AI</h1>
           <span className="text-xs font-semibold text-orange-500 tracking-wider uppercase">Everyday Assistant</span>
         </div>
       </div>

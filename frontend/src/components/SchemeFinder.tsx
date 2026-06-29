@@ -94,7 +94,7 @@ export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLangu
       }
       setChatLoading(true);
       try {
-        const welcomePrompt = `Generate a warm, friendly welcome greeting in 2 sentences as "LifePilot Scheme Finder Helper". Introduce yourself, say you can match them with schemes from the database, and ask them to share their age, state, or occupation. The greeting MUST be entirely in the selected language: ${globalLanguage} (using its native script/alphabet).`;
+        const welcomePrompt = `Generate a warm, friendly welcome greeting in 2 sentences as "LifeLens Scheme Finder Helper". Introduce yourself, say you can match them with schemes from the database, and ask them to share their age, state, or occupation. The greeting MUST be entirely in the selected language: ${globalLanguage} (using its native script/alphabet).`;
         const welcomeText = await callGeminiForSchemes(welcomePrompt, []);
         setChatMessages([{
           sender: 'assistant',
@@ -147,7 +147,7 @@ export const SchemeFinder: React.FC<SchemeFinderProps> = ({ schemes, globalLangu
 
     try {
       // Build context of all database schemes so AI knows what schemes exist
-      const systemInstruction = `You are "LifePilot Scheme Finder Helper". You help everyday Indian citizens find and apply to government schemes.
+      const systemInstruction = `You are "LifeLens Scheme Finder Helper". You help everyday Indian citizens find and apply to government schemes.
 Here is the official list of schemes available in our database:
 ${JSON.stringify(schemes, null, 2)}
 

@@ -380,7 +380,7 @@ def chat_assistant(query: str, user_profile: dict, db_context: dict) -> str:
             """
             
             prompt = f"""
-            You are 'LifePilot AI', a premium, empathetic, and highly capable personal assistant.
+            You are 'LifeLens AI', a premium, empathetic, and highly capable personal assistant.
             You help users manage their daily tasks, track budgets, scan notices, remember medicines, and find government schemes.
             
             Always keep your answers structured, actionable, and conversational.
@@ -401,12 +401,11 @@ def chat_assistant(query: str, user_profile: dict, db_context: dict) -> str:
             return response.text
         except Exception as e:
             print(f"Gemini chat error: {e}. Running fallback chatbot.")
-
+ 
     # Local Fallback Conversational Engine
     q_low = query.lower()
-    
     if "hello" in q_low or "hi" in q_low or "hey" in q_low:
-        return f"Hello {user_profile.get('name')}! I'm your LifePilot assistant. How can I help you today? You can ask me about your tasks, your budget limit of Rs. {user_profile.get('monthly_budget')}, medicine timings, or eligible government schemes."
+        return f"Hello {user_profile.get('name')}! I'm your LifeLens assistant. How can I help you today? You can ask me about your tasks, your budget limit of Rs. {user_profile.get('monthly_budget')}, medicine timings, or eligible government schemes."
         
     if "budget" in q_low or "expense" in q_low or "spend" in q_low:
         total = db_context.get('total_spent', 0.0)
