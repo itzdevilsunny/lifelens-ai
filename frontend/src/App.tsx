@@ -527,6 +527,8 @@ function App() {
             onDeleteExpense={handleDeleteExpense}
             analytics={analytics}
             budget={user?.monthly_budget || 25000}
+            globalLanguage={globalLanguage}
+            user={user}
           />
         );
       case 'schemes':
