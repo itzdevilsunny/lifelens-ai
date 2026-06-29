@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 interface DocumentScannerProps {
   onScanComplete: () => void;
 }
@@ -62,7 +64,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
     setVaultLoading(true);
     setVaultError(null);
     try {
-      const res = await axios.get("http://localhost:8000/api/documents");
+      const res = await axios.get(`${API_BASE}/api/documents`);
       setDocuments(res.data);
     } catch (err: any) {
       console.error(err);
@@ -77,7 +79,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
       return;
     }
     try {
-      await axios.delete(`http://localhost:8000/api/documents/${id}`);
+      await axios.delete(`${API_BASE}/api/documents/${id}`);
       fetchDocuments();
       onScanComplete(); // Refresh main dashboard stats/logs
     } catch (err: any) {
@@ -135,7 +137,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:8000/api/documents/upload", formData, {
+      const res = await axios.post(`${API_BASE}/api/documents/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -413,7 +415,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({ onScanComplete
 
                     <div className="flex items-center gap-2 sm:self-center self-end shrink-0">
                       <a
-                        href={`http://localhost:8000${doc.file_path}`}
+                        href={`${API_BASE}${doc.file_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 border border-orange-100 rounded-lg text-orange-500 hover:bg-orange-50 bg-white transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"

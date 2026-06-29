@@ -34,8 +34,12 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 @app.on_event("startup")
 def startup_event():
     db_mod.init_db()
-    from seed import seed_data
-    seed_data()
+    try:
+        from seed import seed_data
+        seed_data()
+    except Exception as e:
+        print(f"⚠️  Seed skipped (Supabase tables may not exist yet): {e}")
+        print("   Run backend/supabase_migration.sql in Supabase SQL Editor first.")
 
 
 # ─── Helper ──────────────────────────────────────────────────────────────────

@@ -2,21 +2,21 @@ import os
 import json
 import re
 from PIL import Image
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 # Load env variables from .env if present
 load_dotenv()
 
 API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = "gemini-2.5-flash"
 
 if API_KEY:
     try:
-        genai.configure(api_key=API_KEY)
-        # Using gemini-2.5-flash as the standard robust model in this environment
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        client = genai.Client(api_key=API_KEY)
         HAS_GEMINI = True
-        print("Gemini API configured successfully.")
+        print("Gemini API configured successfully (google.genai SDK).")
     except Exception as e:
         print(f"Error configuring Gemini API: {e}. Falling back to mock engine.")
         HAS_GEMINI = False
@@ -84,7 +84,10 @@ def analyze_document_with_vision(file_path: str, filename: str) -> dict:
               "actions_required": ["Action 1 with due date", "Action 2"]
             }
             """
-            response = model.generate_content([prompt, image])
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=[prompt, image]
+            )
             ai_data = extract_json(response.text)
             if ai_data:
                 return ai_data
@@ -202,7 +205,10 @@ def get_predictive_analytics(expenses: list, monthly_budget: float) -> dict:
               ]
             }}
             """
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt
+            )
             ai_data = extract_json(response.text)
             if ai_data:
                 return ai_data
@@ -279,7 +285,10 @@ def recommend_government_schemes(user_profile: dict, schemes: list) -> list:
             Example return: [1, 3, 5]
             Do not return any explanation text, only a valid JSON array.
             """
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt
+            )
             # Try to parse list
             try:
                 # Find brackets [ ... ]
@@ -387,7 +396,10 @@ def chat_assistant(query: str, user_profile: dict, db_context: dict) -> str:
             
             Formulate a helpful response. If the query asks to do something like check expenses, find schemes, or review medication schedules, reference the data above directly.
             """
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt
+            )
             return response.text
         except Exception as e:
             print(f"Gemini chat error: {e}. Running fallback chatbot.")
