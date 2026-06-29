@@ -10,6 +10,7 @@ import { ExpenseTracker } from './components/ExpenseTracker';
 import { SchemeFinder } from './components/SchemeFinder';
 import { VoiceAssistant } from './components/VoiceAssistant';
 import { ProfileModal } from './components/ProfileModal';
+import { LandingPage } from './components/LandingPage';
 import { 
   TrendingUp, 
   CalendarCheck, 
@@ -77,6 +78,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSynced, setIsSynced] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'landing' | 'app'>('landing');
   
   // Global Language state (accessible by all modules, persists across refreshes)
   const [globalLanguage, setGlobalLanguage] = useState<string>(() => {
@@ -724,6 +726,10 @@ function App() {
       </div>
     );
   };
+
+  if (viewMode === 'landing') {
+    return <LandingPage onEnterDashboard={() => setViewMode('app')} />;
+  }
 
   return (
     <div className="flex min-h-screen bg-white">
