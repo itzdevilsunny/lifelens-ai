@@ -8,6 +8,7 @@ import {
   FileText,
   TrendingUp
 } from 'lucide-react';
+import { t } from '../utils/translations';
 
 interface SidebarProps {
   activeTab: string;
@@ -17,17 +18,18 @@ interface SidebarProps {
     occupation: string;
   } | null;
   onEditProfile: () => void;
+  globalLanguage: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onEditProfile }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onEditProfile, globalLanguage }) => {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'planner', label: 'Daily Planner', icon: CalendarCheck },
-    { id: 'reminders', label: 'Smart Reminders', icon: BellRing },
-    { id: 'scanner', label: 'OCR Scanner', icon: FileText },
-    { id: 'expenses', label: 'Expenses & Trends', icon: TrendingUp },
-    { id: 'schemes', label: 'Gov Schemes', icon: SearchCode },
-    { id: 'assistant', label: 'Voice Assistant', icon: Mic },
+    { id: 'dashboard', label: t('dashboard', globalLanguage), icon: LayoutDashboard },
+    { id: 'planner', label: t('planner', globalLanguage), icon: CalendarCheck },
+    { id: 'reminders', label: t('reminders', globalLanguage), icon: BellRing },
+    { id: 'scanner', label: t('scanner', globalLanguage), icon: FileText },
+    { id: 'expenses', label: t('expenses', globalLanguage), icon: TrendingUp },
+    { id: 'schemes', label: t('schemes', globalLanguage), icon: SearchCode },
+    { id: 'assistant', label: t('assistant', globalLanguage), icon: Mic },
   ];
 
   return (

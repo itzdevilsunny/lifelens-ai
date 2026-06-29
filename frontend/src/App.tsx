@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { t } from './utils/translations';
 import { DailyPlanner } from './components/DailyPlanner';
 import { SmartReminders } from './components/SmartReminders';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -77,8 +78,15 @@ function App() {
   const [isSynced, setIsSynced] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
-  // Global Language state (accessible by all modules)
-  const [globalLanguage, setGlobalLanguage] = useState<string>('English');
+  // Global Language state (accessible by all modules, persists across refreshes)
+  const [globalLanguage, setGlobalLanguage] = useState<string>(() => {
+    return localStorage.getItem('lifepilot_language') || 'English';
+  });
+
+  const handleLanguageChange = (lang: string) => {
+    setGlobalLanguage(lang);
+    localStorage.setItem('lifepilot_language', lang);
+  };
 
   // App States
   const [user, setUser] = useState<User | null>(null);
@@ -545,15 +553,15 @@ function App() {
           {/* Daily Schedule Card */}
           <div className="bg-white rounded-2xl border border-orange-50 p-5 shadow-premium flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Today's Tasks</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">{t('todays_tasks', globalLanguage)}</span>
               <span className="text-xl font-black text-gray-700 mt-1 block">
-                {completedTasks}/{tasks.length} Completed
+                {completedTasks}/{tasks.length} {t('completed', globalLanguage)}
               </span>
               <button 
                 onClick={() => setActiveTab('planner')} 
                 className="text-[10px] text-orange-500 font-bold hover:underline mt-2 flex items-center gap-0.5 cursor-pointer"
               >
-                Go to Daily Planner &rarr;
+                {t('go_planner', globalLanguage)} &rarr;
               </button>
             </div>
             <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -564,15 +572,15 @@ function App() {
           {/* Medicine Card */}
           <div className="bg-white rounded-2xl border border-orange-50 p-5 shadow-premium flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Active Medicines</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">{t('active_medicines', globalLanguage)}</span>
               <span className="text-xl font-black text-gray-700 mt-1 block">
-                {pendingMeds.length} Doses Pending
+                {pendingMeds.length} {t('doses_pending', globalLanguage)}
               </span>
               <button 
                 onClick={() => setActiveTab('reminders')} 
                 className="text-[10px] text-orange-500 font-bold hover:underline mt-2 flex items-center gap-0.5 cursor-pointer"
               >
-                Manage Reminders &rarr;
+                {t('manage_reminders', globalLanguage)} &rarr;
               </button>
             </div>
             <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -583,15 +591,15 @@ function App() {
           {/* Expense Limit Card */}
           <div className="bg-white rounded-2xl border border-orange-50 p-5 shadow-premium flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Spends Limit Used</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">{t('spends_limit', globalLanguage)}</span>
               <span className="text-xl font-black text-gray-700 mt-1 block">
-                {Math.round(clampedPct)}% Used
+                {Math.round(clampedPct)}% {t('used', globalLanguage)}
               </span>
               <button 
                 onClick={() => setActiveTab('expenses')} 
                 className="text-[10px] text-orange-500 font-bold hover:underline mt-2 flex items-center gap-0.5 cursor-pointer"
               >
-                View Ledgers &rarr;
+                {t('view_ledgers', globalLanguage)} &rarr;
               </button>
             </div>
             <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -602,15 +610,15 @@ function App() {
           {/* Scheme recommendation preview */}
           <div className="bg-white rounded-2xl border border-orange-50 p-5 shadow-premium flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Scheme Finder</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">{t('scheme_finder', globalLanguage)}</span>
               <span className="text-xl font-black text-gray-700 mt-1 block">
-                {schemes.length} Schemes Match
+                {schemes.length} {t('schemes_match', globalLanguage)}
               </span>
               <button 
                 onClick={() => setActiveTab('schemes')} 
                 className="text-[10px] text-orange-500 font-bold hover:underline mt-2 flex items-center gap-0.5 cursor-pointer"
               >
-                Search Eligibilities &rarr;
+                {t('search_eligibility', globalLanguage)} &rarr;
               </button>
             </div>
             <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -626,7 +634,7 @@ function App() {
             <div className="bg-white rounded-2xl border border-orange-50 p-6 shadow-premium">
               <div className="flex items-center gap-2.5 mb-5">
                 <FileText className="text-orange-500" size={18} />
-                <h4 className="font-bold text-gray-800 text-base">Quick OCR Scanner</h4>
+                <h4 className="font-bold text-gray-800 text-base">{t('quick_ocr', globalLanguage)}</h4>
               </div>
               <DocumentScanner onScanComplete={fetchAllData} globalLanguage={globalLanguage} />
             </div>
@@ -634,12 +642,12 @@ function App() {
             {/* Latest Expenses Mini log */}
             <div className="bg-white rounded-2xl border border-orange-50 p-6 shadow-premium text-left">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="font-bold text-gray-800 text-base">Recent Transactions</h4>
+                <h4 className="font-bold text-gray-800 text-base">{t('recent_tx', globalLanguage)}</h4>
                 <button 
                   onClick={() => setActiveTab('expenses')}
                   className="text-xs font-semibold text-orange-500 hover:underline cursor-pointer"
                 >
-                  View All
+                  {t('view_ledgers', globalLanguage)}
                 </button>
               </div>
               
@@ -668,7 +676,7 @@ function App() {
             <div className="space-y-4 flex-1 flex flex-col">
               <div className="flex items-center gap-2 border-b border-orange-50 pb-4">
                 <Mic className="text-orange-500" size={18} />
-                <h4 className="font-bold text-gray-800 text-base">LifePilot AI Mic</h4>
+                <h4 className="font-bold text-gray-800 text-base">{t('ask_ai', globalLanguage)}</h4>
               </div>
               
               <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
@@ -677,9 +685,9 @@ function App() {
                     <Mic size={24} />
                   </div>
                 </div>
-                <p className="text-sm font-bold text-gray-700 mt-4">Ask Everyday AI</p>
+                <p className="text-sm font-bold text-gray-700 mt-4">{t('ask_ai', globalLanguage)}</p>
                 <p className="text-xs text-gray-400 mt-1 px-4 leading-relaxed">
-                  Click the button or go to the Voice Assistant tab to chat or speak commands directly.
+                  {t('click_mic', globalLanguage)}
                 </p>
               </div>
             </div>
@@ -688,7 +696,7 @@ function App() {
               onClick={() => setActiveTab('assistant')}
               className="w-full mt-4 py-2.5 border border-orange-200 hover:bg-orange-50 text-orange-600 text-xs font-bold rounded-xl transition-all cursor-pointer"
             >
-              Open Interactive Assistant &rarr;
+              {t('open_assistant', globalLanguage)} &rarr;
             </button>
           </div>
         </div>
@@ -704,6 +712,7 @@ function App() {
         setActiveTab={setActiveTab}
         user={user}
         onEditProfile={() => setIsProfileModalOpen(true)}
+        globalLanguage={globalLanguage}
       />
       
       {/* Main dashboard content area */}
@@ -713,7 +722,7 @@ function App() {
           user={user}
           onEditProfile={() => setIsProfileModalOpen(true)}
           globalLanguage={globalLanguage}
-          onLanguageChange={setGlobalLanguage}
+          onLanguageChange={handleLanguageChange}
         />
         
         <main className="flex-1 p-8 overflow-y-auto">
